@@ -3,7 +3,7 @@
 import { ChildBookPreview } from "./ChildBookPreview"
 
 
-export function PreviewStep({ metadata, manuscriptData, getPreviewStyles, selectedTheme, exportFormat, pageImages }) {
+export function PreviewStep({ metadata, manuscriptData, getPreviewStyles, selectedTheme, exportFormat, pageImages, ageGroup, trimSize, binding }) {
   return (
     <div className="space-y-6">
       <div>
@@ -13,9 +13,9 @@ export function PreviewStep({ metadata, manuscriptData, getPreviewStyles, select
         </p>
       </div>
 
-      <ChildBookPreview metadata={metadata} manuscriptData={manuscriptData} getPreviewStyles={getPreviewStyles} pageImages={pageImages} readOnly={true} />
+      <ChildBookPreview metadata={metadata} manuscriptData={manuscriptData} getPreviewStyles={getPreviewStyles} pageImages={pageImages} readOnly={true} ageGroup={ageGroup} trimSize={trimSize} binding={binding} />
 
-      {manuscriptData && (
+      {/* {manuscriptData && (
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <h4 className="font-medium mb-2">Manuscript Statistics</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -37,7 +37,7 @@ export function PreviewStep({ metadata, manuscriptData, getPreviewStyles, select
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

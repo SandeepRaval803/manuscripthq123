@@ -7,7 +7,13 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import toast from "react-hot-toast"
 
-export function ExportStep({ exportFormat, setExportFormat, manuscriptData, metadata, getPreviewStyles }) {
+const TRIM_PDF_SIZE = {
+  "8x8": { w: 8, h: 8 },
+  "8.5x8.5": { w: 8.5, h: 8.5 },
+  "8x10": { w: 8, h: 10 },
+  "10x8": { w: 10, h: 8 },
+};
+export function ExportStep({ exportFormat, setExportFormat, manuscriptData, metadata, getPreviewStyles, trimSize, pageImages }) {
   const [exporting, setExporting] = useState(false)
 
   const generateTableOfContents = () => {
@@ -84,279 +90,6 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
       .trim()
     
     return cleanText
-  }
-
-
-  const exportAsPDF = async () => {
-    try {
-      console.log("Starting PDF export...")
-      
-      // Use the fallback jsPDF approach directly for best compatibility
-      await exportAsPDFFallback()
-      
-    } catch (error) {
-      console.error("PDF generation error details:", error)
-      console.error("Error stack:", error.stack)
-      throw new Error(`Failed to generate PDF: ${error.message}`)
-    }
-  }
-
-  const exportAsPDFFallback = async () => {
-    // Load jsPDF
-    let script = document.querySelector('script[src*="jspdf"]')
-    
-    if (!script) {
-      script = document.createElement("script")
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-      
-      await new Promise((resolve, reject) => {
-        script.onload = resolve
-        script.onerror = reject
-        document.head.appendChild(script)
-      })
-    }
-
-    if (!window.jspdf || !window.jspdf.jsPDF) {
-      throw new Error("jsPDF library failed to load")
-    }
-
-    const { jsPDF } = window.jspdf
-    const doc = new jsPDF({
-      orientation: "portrait",
-      unit: "mm",
-      format: "a4",
-      compress: true,
-      putOnlyUsedFonts: true
-    })
-
-    // Get theme styles for consistent formatting
-    const themeStyles = getPreviewStyles ? getPreviewStyles() : {}
-    const fontFamily = themeStyles.fontFamily || 'Georgia, serif'
-    const fontSize = themeStyles.fontSize || '12pt'
-    const lineHeight = themeStyles.lineHeight || '1.6'
-    const margins = themeStyles.padding || '2rem'
-    
-    // Convert margins to mm for PDF
-    const marginInMM = margins === '1rem' ? 15 : margins === '3rem' ? 35 : 25
-
-    const pageWidth = 210
-    const pageHeight = 297
-    const margin = marginInMM
-    const contentWidth = pageWidth - margin * 2
-    let yPosition = margin
-
-    // Helper function to add text with proper formatting and dynamic wrapping
-    const addText = (text, textSize = parseInt(fontSize) || 12, isBold = false, isCenter = false, textLineHeight = parseFloat(lineHeight) || 1.2) => {
-      if (!text || text.trim() === '') return
-      
-      doc.setFontSize(textSize)
-      
-      // Map font family to jsPDF supported fonts
-      let pdfFont = "helvetica" // default
-      if (fontFamily.includes("serif") || fontFamily.includes("Georgia")) {
-        pdfFont = "times"
-      } else if (fontFamily.includes("monospace") || fontFamily.includes("Menlo")) {
-        pdfFont = "courier"
-      }
-      
-      doc.setFont(pdfFont, isBold ? "bold" : "normal")
-
-      // Split text into lines that fit within the content width
-      const lines = doc.splitTextToSize(text, contentWidth)
-      
-      // Check if we need a page break before adding text
-      const neededSpace = lines.length * textSize * textLineHeight * 0.5
-      if (yPosition + neededSpace > pageHeight - margin) {
-        addNewPage()
-      }
-
-      if (isCenter) {
-        lines.forEach((line, index) => {
-          const textWidth = doc.getTextWidth(line)
-          const x = (pageWidth - textWidth) / 2
-          doc.text(line, x, yPosition)
-          yPosition += textSize * textLineHeight * 0.5
-        })
-      } else {
-        doc.text(lines, margin, yPosition)
-        yPosition += (lines.length - 1) * (textSize * textLineHeight * 0.5)
-      }
-
-      yPosition += textSize * textLineHeight * 0.3
-    }
-
-    const addNewPage = () => {
-      doc.addPage()
-      yPosition = margin
-    }
-
-    const checkPageBreak = (neededSpace = 20) => {
-      if (yPosition + neededSpace > pageHeight - margin) {
-        addNewPage()
-      }
-    }
-
-    // Title Page - Dynamic positioning for long content
-    yPosition = margin + 20
-    
-    // Calculate space needed for title
-    const titleText = metadata.title || "Untitled"
-    const titleLines = doc.splitTextToSize(titleText, contentWidth)
-    const titleHeight = titleLines.length * 28 * 1.4 * 0.5
-    
-    // Calculate space needed for subtitle
-    let subtitleHeight = 0
-    if (metadata.subTitle) {
-      const subtitleLines = doc.splitTextToSize(metadata.subTitle, contentWidth)
-      subtitleHeight = subtitleLines.length * 18 * 1.3 * 0.5
-    }
-    
-    // Calculate space needed for author
-    const authorText = `by ${metadata.author || "Unknown Author"}`
-    const authorLines = doc.splitTextToSize(authorText, contentWidth)
-    const authorHeight = authorLines.length * 16 * 1.2 * 0.5
-    
-    // Calculate total height needed
-    const totalHeight = titleHeight + subtitleHeight + authorHeight + 60 // 60 for spacing
-    
-    // Center vertically if content fits, otherwise start from top
-    if (totalHeight < pageHeight - margin * 2) {
-      yPosition = (pageHeight - totalHeight) / 2
-    }
-    
-    // Add title
-    addText(titleText, 28, true, true, 1.4)
-    yPosition += 30
-    
-    // Add subtitle if exists
-    if (metadata.subTitle) {
-      addText(metadata.subTitle, 18, false, true, 1.3)
-      yPosition += 25
-    }
-    
-    // Add author
-    addText(authorText, 16, false, true, 1.2)
-
-    // Copyright Page (left-aligned to match preview exactly)
-    addNewPage()
-    yPosition = margin + 20
-    
-    // Copyright notice and All Rights Reserved
-    const baseFontSize = parseInt(fontSize) || 12
-    addText(`Copyright © ${new Date().getFullYear()} by ${metadata.author || "N/A"}`, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 6
-    addText("All Rights Reserved.", baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 6
-    
-    // ISBN
-    addText(`ISBN: ${metadata.ISBN || "N/A"}`, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 6
-    
-    // Cover Design By
-    addText(`Cover Design By ${metadata.coverdesignby || "N/A"}`, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 6
-    
-    // Cover Illustration By
-    addText(`Cover Illustration By ${metadata.coverillustrationby || "N/A"}`, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 6
-    
-    // Edited By
-    addText(`Edited By ${metadata.editedby || "N/A"}`, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 6
-    
-    // Edition
-    addText(`${metadata.edition || "N/A"} Edition`, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 6
-    
-    // Published By
-    addText(`Published By: ${metadata.publisher || "N/A"}`, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-    yPosition += 20
-    
-    // Description (with extra spacing like mt-7 in preview)
-    if (metadata.description) {
-      addText(metadata.description, baseFontSize, false, false, parseFloat(lineHeight) || 1.2)
-      yPosition += 20
-    }
-    
-    // Add extra spacing to fill the page
-    yPosition += 50
-    
-    // Force page break to ensure TOC is on page 3
-    addNewPage()
-    addText("Table of Contents", 22, true, true, 1.3)
-    yPosition += 20
-
-    const tableOfContents = generateTableOfContents()
-    tableOfContents.forEach((item) => {
-      checkPageBreak(20)
-      doc.setFontSize(parseInt(fontSize) || 12)
-      
-      // Map font family to jsPDF supported fonts
-      let pdfFont = "helvetica" // default
-      if (fontFamily.includes("serif") || fontFamily.includes("Georgia")) {
-        pdfFont = "times"
-      } else if (fontFamily.includes("monospace") || fontFamily.includes("Menlo")) {
-        pdfFont = "courier"
-      }
-      
-      doc.setFont(pdfFont, "normal")
-
-      // Chapter title
-      const titleText = item.title
-      const pageNumText = `Page ${item.page}`
-      const pageNumWidth = doc.getTextWidth(pageNumText)
-      
-      // Calculate dots needed
-      const availableWidth = contentWidth - pageNumWidth - 10
-      const titleWidth = doc.getTextWidth(titleText)
-      const dotsWidth = availableWidth - titleWidth
-      const dotCount = Math.floor(dotsWidth / 3)
-      const dots = ".".repeat(Math.max(0, dotCount))
-      
-      // Combine title + dots + page number
-      const fullText = `${titleText} ${dots} ${pageNumText}`
-      doc.text(fullText, margin, yPosition)
-
-      yPosition += 6
-    })
-
-    // Chapters
-    console.log("Processing manuscript data:", manuscriptData.data.length, "chapters")
-    manuscriptData.data.forEach((item, index) => {
-      console.log(`Processing chapter ${index + 1}: ${item.sectionTitle}`)
-      addNewPage()
-
-      // Chapter title
-      addText(item.sectionTitle, 20, true, true, 1.3)
-      yPosition += 20
-
-      // Chapter content with better formatting
-      const cleanedContent = cleanContent(item.content)
-
-      // Split content into paragraphs
-      const paragraphs = cleanedContent.split(/\n\s*\n/).filter(p => p.trim())
-
-      paragraphs.forEach((paragraph) => {
-        checkPageBreak(20)
-        if (paragraph.trim()) {
-          // Check if it's a heading (starts with newline and is short)
-          if (paragraph.startsWith('\n') && paragraph.length < 100 && !paragraph.includes('.')) {
-            addText(paragraph.trim(), baseFontSize + 2, true, false, parseFloat(lineHeight) || 1.4)
-            yPosition += 10
-          } else {
-            addText(paragraph.trim(), baseFontSize - 1, false, false, parseFloat(lineHeight) || 1.6)
-            yPosition += 8
-          }
-        }
-      })
-    })
-
-    // Save the PDF with proper filename
-    const safeTitle = (metadata.title || "manuscript").replace(/[^a-zA-Z0-9\s]/g, "_").replace(/\s+/g, "_")
-    const filename = `${safeTitle}.pdf`
-    
-    console.log("PDF generation completed, saving as:", filename)
-    doc.save(filename)
   }
 
 
@@ -491,6 +224,166 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     URL.revokeObjectURL(url)
   }
 
+  const addImageCover = (pdf, imgData, pageW, pageH) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.src = imgData;
+  
+      img.onload = () => {
+        const imgW = img.width;
+        const imgH = img.height;
+  
+        const imgRatio = imgW / imgH;
+        const pageRatio = pageW / pageH;
+  
+        let drawW, drawH, offsetX, offsetY;
+  
+        if (imgRatio > pageRatio) {
+          // Wider image
+          drawH = pageH;
+          drawW = pageH * imgRatio;
+          offsetX = (pageW - drawW) / 2;
+          offsetY = 0;
+        } else {
+          // Taller image
+          drawW = pageW;
+          drawH = pageW / imgRatio;
+          offsetX = 0;
+          offsetY = (pageH - drawH) / 2;
+        }
+  
+        // 🔥 Detect format automatically
+        const format = imgData.includes("png") ? "PNG" : "JPEG";
+  
+        pdf.addImage(
+          imgData,
+          format,
+          offsetX,
+          offsetY,
+          drawW,
+          drawH
+        );
+  
+        resolve();
+      };
+  
+      img.onerror = reject;
+    });
+  };
+  
+  
+  const exportImagesAsPDF = async () => {
+    if (!pageImages || pageImages.filter(Boolean).length === 0) {
+      toast.error("No images to export");
+      return;
+    }
+  
+    if (!window.jspdf) {
+      await new Promise((res) => {
+        const script = document.createElement("script");
+        script.src =
+          "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+        script.onload = res;
+        document.head.appendChild(script);
+      });
+    }
+  
+    const { jsPDF } = window.jspdf;
+  
+    const size = TRIM_PDF_SIZE[trimSize] || TRIM_PDF_SIZE["8x8"];
+  
+    const pdf = new jsPDF({
+      orientation: size.w > size.h ? "landscape" : "portrait",
+      unit: "in",
+      format: [size.w, size.h],
+    });
+  
+    const images = pageImages.filter(Boolean);
+  
+    for (let i = 0; i < images.length; i++) {
+      if (i !== 0) pdf.addPage();
+      await addImageCover(pdf, images[i], size.w, size.h);
+    }
+  
+    const name = (metadata.title || "storybook")
+      .replace(/[^a-zA-Z0-9]/g, "_")
+      .toLowerCase();
+  
+    pdf.save(`${name}.pdf`);
+  }; 
+  
+  const exportImagesAsEPUB = async () => {
+    if (!pageImages || pageImages.filter(Boolean).length === 0) {
+      toast.error("No images to export");
+      return;
+    }
+  
+    const images = pageImages.filter(Boolean);
+  
+    // Build HTML pages
+    const pagesHTML = images
+      .map(
+        (img, index) => `
+        <section class="page">
+          <img src="${img}" alt="Page ${index + 1}" />
+        </section>
+      `
+      )
+      .join("");
+  
+    const epubHTML = `<!DOCTYPE html>
+  <html>
+  <head>
+  <meta charset="UTF-8" />
+  <title>${metadata.title || "Story Book"}</title>
+  
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: white;
+    }
+  
+    .page {
+      page-break-after: always;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+    }
+  
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+  </style>
+  </head>
+  
+  <body>
+    ${pagesHTML}
+  </body>
+  </html>`;
+  
+    const blob = new Blob([epubHTML], { type: "application/epub+zip" });
+    const url = URL.createObjectURL(blob);
+  
+    const a = document.createElement("a");
+    a.href = url;
+  
+    const safeTitle = (metadata.title || "storybook")
+      .replace(/[^a-zA-Z0-9]/g, "_")
+      .toLowerCase();
+  
+    a.download = `${safeTitle}.epub`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  
+    URL.revokeObjectURL(url);
+  };
+  
   const handleExport = async () => {
     if (!manuscriptData) {
       toast.error("No manuscript data to export")
@@ -505,10 +398,12 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     setExporting(true)
     try {
       if (exportFormat === "PDF") {
-        await exportAsPDF()
+        // await exportAsPDF()
+        await exportImagesAsPDF()
         toast.success("PDF exported successfully!")
       } else {
-        await exportAsEPUB()
+        // await exportAsEPUB()
+        await exportImagesAsEPUB();
         toast.success("EPUB exported successfully!")
       }
     } catch (error) {

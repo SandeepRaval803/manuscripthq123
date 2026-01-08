@@ -45,6 +45,10 @@ export function ChildrensBookWizard() {
     genre: "",
   });
 
+  const [ageGroup, setAgeGroup] = useState("0");
+  const [trimSize, setTrimSize] = useState("8x8");
+  const [binding, setBinding] = useState("hardcover-kdp");
+
   // Export settings
   const [exportFormat, setExportFormat] = useState("EPUB");
   const currentStepIndex = steps.findIndex((step) => step.id === currentStep);
@@ -177,7 +181,7 @@ export function ChildrensBookWizard() {
             Step {currentStepIndex + 1} of {steps.length}
           </div>
           <div className="text-sm text-muted-foreground">
-            {steps[currentStepIndex].name}
+            {steps[currentStepIndex]?.name}
           </div>
         </div>
       </div>
@@ -196,6 +200,12 @@ export function ChildrensBookWizard() {
             getPreviewStyles={getPreviewStyles}
             pageImages={pageImages}
             setPageImages={setPageImages}
+            ageGroup={ageGroup}
+            trimSize={trimSize}
+            binding={binding}
+            setAgeGroup={setAgeGroup}
+            setTrimSize={setTrimSize}
+            setBinding={setBinding}
           />
         )}
 
@@ -211,6 +221,9 @@ export function ChildrensBookWizard() {
             selectedTheme={selectedTheme}
             exportFormat={exportFormat}
             pageImages={pageImages}
+            ageGroup={ageGroup}
+            trimSize={trimSize}
+            binding={binding}
           />
         )}
 
@@ -221,6 +234,10 @@ export function ChildrensBookWizard() {
             manuscriptData={manuscriptData}
             metadata={metadata}
             getPreviewStyles={getPreviewStyles}
+            ageGroup={ageGroup}
+            trimSize={trimSize}
+            binding={binding}
+            pageImages={pageImages}
           />
         )}
       </div>

@@ -3,9 +3,27 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TRIM_ASPECT_RATIO, BINDING_PREVIEW_TYPE } from "./WizardConstants";
 
 const TOTAL_PAGES = 32;
-export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, pageImages, setPageImages, readOnly=false }) {
+const AGE_GUIDELINES = {
+  "0-3": {
+    label: "Babies (0–3)",
+    wordsPerPage: [0, 10],
+    totalWords: [0, 150],
+  },
+  "3-5": {
+    label: "Preschool (3–5)",
+    wordsPerPage: [10, 40],
+    totalWords: [200, 600],
+  },
+  "5-7": {
+    label: "Early Reader (5–7)",
+    wordsPerPage: [30, 100],
+    totalWords: [500, 1500],
+  },
+};
+export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, pageImages, setPageImages, readOnly=false, ageGroup, trimSize, binding }) {
   const [currentPreviewPage, setCurrentPreviewPage] = useState(0);
 
   const generateTableOfContents = () => {
@@ -42,7 +60,6 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
   
 
   const styles = getPreviewStyles();
-  const tableOfContents = generateTableOfContents();
 
 
   const pagesSource = readOnly
@@ -76,7 +93,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
             <img
               src={img}
               alt="Page artwork"
-              className="w-full h-full object-cover"
+              className="w-full h-auto object-cover"
             />
           ) : (
             !readOnly && "Drop image here or click to upload"
@@ -97,6 +114,17 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
       </div>
     ),
   }));
+
+  const getWordCount = (html = "") => {
+    return html
+      .replace(/<[^>]*>/g, "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+  };
+
+  const currentPageText = manuscriptData?.data?.[currentPreviewPage]?.content || "";
+  const currentPageWords = getWordCount(currentPageText);
   
 
   const currentPage = pages[currentPreviewPage];
@@ -157,6 +185,52 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+      {
+        !readOnly && (
+          <div className="grid grid-cols-6 gap-3 mb-6 mt-6">
+            {pages.map((page, index) => (
+              <div
+                key={index}
+                onClick={() => setCurrentPreviewPage(index)}
+                className={`h-20 border rounded-md cursor-pointer overflow-hidden
+                  flex items-center justify-center text-xs
+                  ${currentPreviewPage === index
+                    ? "border-black ring-1 ring-black"
+                    : "border-gray-300"}
+                `}
+              >
+                {page?.content?.props?.children?.props?.children?.[0]?.props?.src ? (
+                  <img
+                    src={
+                      page.content.props.children.props.children?.[0]?.props?.src
+                    }
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-gray-400">
+                    {readOnly ? "No Image" : `Page ${index + 1}`}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      }
+      {ageGroup && AGE_GUIDELINES[ageGroup] && !readOnly && (
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
+          <strong>Layout guidance:</strong>{" "}
+          This page has <b>{currentPageWords}</b> words.
+          Typical for{" "}
+          <b>{AGE_GUIDELINES[ageGroup].label}</b> is{" "}
+          {AGE_GUIDELINES[ageGroup].wordsPerPage[0]}–
+          {AGE_GUIDELINES[ageGroup].wordsPerPage[1]} words per page.
+        </div>
+      )}
+      {trimSize && binding && (
+        <div className="text-xs text-gray-600 mb-2 text-center">
+          Previewing {trimSize} · {binding.replace("-", " ")}
+        </div>
+      )}
     </div>
   );
 }

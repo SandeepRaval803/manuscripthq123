@@ -6,11 +6,11 @@ export const steps = [
     name: "Theme",
     icon: Palette,
   },
-  {
-    id: "metadata",
-    name: "Metadata",
-    icon: FileText,
-  },
+  // {
+  //   id: "metadata",
+  //   name: "Metadata",
+  //   icon: FileText,
+  // },
   {
     id: "preview",
     name: "Preview",
@@ -93,3 +93,16 @@ export const themeOptions = [
     icon: PenLine,
   },
 ]
+
+export const TRIM_ASPECT_RATIO = {
+  "8x8": "1 / 1",
+  "8.5x8.5": "1 / 1",
+  "8x10": "4 / 5",   
+  "10x8": "5 / 4", 
+};
+
+export const BINDING_PREVIEW_TYPE = {
+  "hardcover-kdp": "hardcover",
+  "hardcover-ingram": "hardcover",
+  "paperback-kdp": "paperback",
+};
