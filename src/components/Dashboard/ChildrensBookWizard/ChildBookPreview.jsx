@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TRIM_ASPECT_RATIO, BINDING_PREVIEW_TYPE } from "./WizardConstants";
+import { BINDING_PREVIEW_TYPE, TRIM_ASPECT_RATIO } from "./WizardConstants";
 
 const TOTAL_PAGES = 32;
 const AGE_GUIDELINES = {
@@ -60,7 +60,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
   
 
   const styles = getPreviewStyles();
-
+  const bindingType = BINDING_PREVIEW_TYPE[binding] || "";
 
   const pagesSource = readOnly
     ? pageImages
@@ -74,10 +74,28 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
   const pages = pagesSource.map(({ img, index }) => ({
     content: (
       <div className="h-full flex flex-col gap-4">
+        {/* {
+          img ? (
+            <div
+                  className={`w-full border rounded-md overflow-hidden bg-gray-100 ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}`}
+                  style={{
+                    aspectRatio: TRIM_ASPECT_RATIO[trimSize] || "1 / 1",
+                  }}
+                >
+                  <img
+                    src={img}
+                    alt={`Cover design ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+          ) : */}
         <div
-          className={`rounded-md overflow-hidden flex items-center justify-center text-sm
-            ${readOnly ? "h-[420px]" : "h-72 bg-gray-200 cursor-pointer"}
+          className={img ? `w-full border rounded-md overflow-hidden bg-gray-100 ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}` : `rounded-md overflow-hidden flex items-center justify-center text-sm
+            ${readOnly ? "h-[420px]" : "h-auto bg-gray-200 cursor-pointer"}
           `}
+          style={{
+            aspectRatio: TRIM_ASPECT_RATIO[trimSize] || "1 / 1",
+          }}
           onDrop={!readOnly ? (e) => handleDrop(e, index) : undefined}
           onDragOver={!readOnly ? handleDragOver : undefined}
           onClick={
@@ -93,7 +111,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
             <img
               src={img}
               alt="Page artwork"
-              className="w-full h-auto object-cover"
+              className="w-full h-full object-cover"
             />
           ) : (
             !readOnly && "Drop image here or click to upload"
@@ -111,6 +129,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
             />
           )}
         </div>
+        {/* } */}
       </div>
     ),
   }));

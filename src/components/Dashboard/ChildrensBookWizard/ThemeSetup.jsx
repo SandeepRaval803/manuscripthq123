@@ -28,11 +28,38 @@ export function ThemeStep({
   setBinding,
 }) {
   const uploadedImages = pageImages.filter(Boolean);
+  const isPreviewLocked = !ageGroup || ageGroup === "0";
 
 
   const bindingType = BINDING_PREVIEW_TYPE[binding] || "";
   return (
     <div className="space-y-6">
+      {isPreviewLocked ? (
+        <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+        <div className="w-[320px] rounded-lg border bg-white p-4 shadow-lg space-y-3">
+          <h3 className="text-sm font-semibold text-center">
+            Select Age Group to Unlock Preview
+          </h3>
+  
+          <div className="space-y-2">
+            <Label>Age Group</Label>
+            <Select
+              value={ageGroup}
+              onValueChange={(value) => setAgeGroup(value)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select age group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0-3">Babies (0–3)</SelectItem>
+                <SelectItem value="3-5">Preschool (3–5)</SelectItem>
+                <SelectItem value="5-7">Early Reader (5–7)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+      ) : 
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
@@ -146,6 +173,7 @@ export function ThemeStep({
           </CardContent>
         </Card>
       </div>
+      }
     </div>
   );
 }
