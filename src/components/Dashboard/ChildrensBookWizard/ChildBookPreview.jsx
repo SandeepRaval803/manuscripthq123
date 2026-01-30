@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useRef } from "react";
+import { ChevronLeft, ChevronRight, Plus, X, Type, Bold, Italic, Underline, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BINDING_PREVIEW_TYPE, TRIM_ASPECT_RATIO } from "./WizardConstants";
+import RichTextEditor from "../Editor/RichTextEditor";
+import { Textarea } from "@/components/ui/textarea";
 
 const TOTAL_PAGES = 32;
 const AGE_GUIDELINES = {
@@ -23,16 +26,12 @@ const AGE_GUIDELINES = {
     totalWords: [500, 1500],
   },
 };
-export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, pageImages, setPageImages, readOnly=false, ageGroup, trimSize, binding }) {
+export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, pageImages, setPageImages, textOverlays, setTextOverlays, readOnly=false, ageGroup, trimSize, binding }) {
   const [currentPreviewPage, setCurrentPreviewPage] = useState(0);
-
-  const generateTableOfContents = () => {
-    if (!manuscriptData?.data) return [];
-    return manuscriptData.data.map((item, index) => ({
-      title: item.sectionTitle,
-      page: index + 4, // Page shift due to new second page
-    }));
-  };
+  const [draggingTextId, setDraggingTextId] = useState(null);
+  const [editingTextId, setEditingTextId] = useState(null);
+  const [newTextValue, setNewTextValue] = useState("");
+  const imageContainerRef = useRef(null);
 
   const handleImageUpload = (file, pageIndex) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -48,16 +47,135 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e, pageIndex) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    handleImageUpload(file, pageIndex);
+  const handleAddText = (pageIndex) => {
+    if (!pageImages[pageIndex]) return;
+    
+    const newText = {
+      id: Date.now().toString(),
+      text: "Double click to edit",
+      x: 50,
+      y: 50,
+      fontSize: 24,
+      color: "#000000",
+      fontFamily: "Arial",
+      bold: false,
+      italic: false,
+      underline: false,
+    };
+
+    setTextOverlays((prev) => {
+      const updated = [...prev];
+      updated[pageIndex] = [...(updated[pageIndex] || []), newText];
+      return updated;
+    });
+    setEditingTextId(newText.id);
+    setNewTextValue(newText.text);
   };
-  
-  const handleDragOver = (e) => {
+
+  const handleTextMouseDown = (e, textId, pageIndex) => {
+    if (editingTextId) return; // Don't drag if editing
     e.preventDefault();
+    setDraggingTextId(textId);
+    
+    const handleMouseMove = (e) => {
+      if (!imageContainerRef.current) return;
+      const container = imageContainerRef.current;
+      const rect = container.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+      setTextOverlays((prev) => {
+        const updated = [...prev];
+        const pageTexts = [...(updated[pageIndex] || [])];
+        const textIndex = pageTexts.findIndex((t) => t.id === textId);
+        if (textIndex !== -1) {
+          pageTexts[textIndex] = {
+            ...pageTexts[textIndex],
+            x: Math.max(0, Math.min(100, x)),
+            y: Math.max(0, Math.min(100, y)),
+          };
+          updated[pageIndex] = pageTexts;
+        }
+        return updated;
+      });
+    };
+
+    const handleMouseUp = () => {
+      setDraggingTextId(null);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
   };
-  
+
+  const handleTextDoubleClick = (textId) => {
+    setEditingTextId(textId);
+    const pageTexts = (textOverlays && textOverlays[currentPreviewPage]) ? textOverlays[currentPreviewPage] : [];
+    const text = pageTexts.find((t) => t.id === textId);
+    if (text) {
+      setNewTextValue(text.text);
+    }
+  };
+
+  const toggleTextFormat = (textId, pageIndex, formatType) => {
+    setTextOverlays((prev) => {
+      const updated = [...prev];
+      const pageTexts = [...(updated[pageIndex] || [])];
+      const textIndex = pageTexts.findIndex((t) => t.id === textId);
+      if (textIndex !== -1) {
+        pageTexts[textIndex] = {
+          ...pageTexts[textIndex],
+          [formatType]: !pageTexts[textIndex][formatType],
+        };
+        updated[pageIndex] = pageTexts;
+      }
+      return updated;
+    });
+  };
+
+  const handleTextUpdate = (textId, pageIndex) => {
+    setTextOverlays((prev) => {
+      const updated = [...prev];
+      const pageTexts = [...(updated[pageIndex] || [])];
+      const textIndex = pageTexts.findIndex((t) => t.id === textId);
+      if (textIndex !== -1) {
+        pageTexts[textIndex] = {
+          ...pageTexts[textIndex],
+          text: newTextValue,
+        };
+        updated[pageIndex] = pageTexts;
+      }
+      return updated;
+    });
+    setEditingTextId(null);
+    setNewTextValue("");
+  };
+
+  const handleTextDelete = (textId, pageIndex) => {
+    setTextOverlays((prev) => {
+      const updated = [...prev];
+      updated[pageIndex] = (updated[pageIndex] || []).filter((t) => t.id !== textId);
+      return updated;
+    });
+  };
+
+  const handleTextStyleChange = (textId, pageIndex, property, value) => {
+    setTextOverlays((prev) => {
+      const updated = [...prev];
+      const pageTexts = [...(updated[pageIndex] || [])];
+      const textIndex = pageTexts.findIndex((t) => t.id === textId);
+      if (textIndex !== -1) {
+        pageTexts[textIndex] = {
+          ...pageTexts[textIndex],
+          [property]: value,
+        };
+        updated[pageIndex] = pageTexts;
+      }
+      return updated;
+    });
+  };
 
   const styles = getPreviewStyles();
   const bindingType = BINDING_PREVIEW_TYPE[binding] || "";
@@ -71,68 +189,256 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
         index,
       }));
 
-  const pages = pagesSource.map(({ img, index }) => ({
-    content: (
-      <div className="h-full flex flex-col gap-4">
-        {/* {
-          img ? (
-            <div
-                  className={`w-full border rounded-md overflow-hidden bg-gray-100 ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}`}
-                  style={{
-                    aspectRatio: TRIM_ASPECT_RATIO[trimSize] || "1 / 1",
-                  }}
-                >
-                  <img
-                    src={img}
-                    alt={`Cover design ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-          ) : */}
-        <div
-          className={img ? `w-full border rounded-md overflow-hidden bg-gray-100 ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}` : `rounded-md overflow-hidden flex items-center justify-center text-sm
-            ${readOnly ? "h-[420px]" : "h-auto bg-gray-200 cursor-pointer"}
-          `}
-          style={{
-            aspectRatio: TRIM_ASPECT_RATIO[trimSize] || "1 / 1",
-          }}
-          onDrop={!readOnly ? (e) => handleDrop(e, index) : undefined}
-          onDragOver={!readOnly ? handleDragOver : undefined}
-          onClick={
-            !readOnly
-              ? () =>
-                  document
-                    .getElementById(`img-upload-${index}`)
-                    ?.click()
-              : undefined
-          }
-        >
-          {img ? (
-            <img
-              src={img}
-              alt="Page artwork"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            !readOnly && "Drop image here or click to upload"
-          )}
-
-          {!readOnly && (
-            <input
-              id={`img-upload-${index}`}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) =>
-                handleImageUpload(e.target.files[0], index)
+  const pages = pagesSource.map(({ img, index }) => {
+    const pageTexts = (textOverlays && textOverlays[index]) ? textOverlays[index] : [];
+    return {
+      content: (
+        <div className="h-full flex flex-col gap-4">
+          <div
+            ref={index === currentPreviewPage ? imageContainerRef : null}
+            className={img ? `w-full border rounded-md overflow-hidden bg-gray-100 relative ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}` : `rounded-md overflow-hidden flex items-center justify-center text-sm
+              ${readOnly ? "h-[420px]" : "h-auto bg-gray-200 cursor-pointer"}
+            `}
+            style={{
+              aspectRatio: TRIM_ASPECT_RATIO[trimSize] || "1 / 1",
+            }}
+            onDrop={(e) => {
+              if (!readOnly) {
+                e.preventDefault();
+                e.stopPropagation();
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith("image/")) {
+                  handleImageUpload(file, index);
+                }
               }
-            />
-          )}
+            }}
+            onDragOver={(e) => {
+              if (!readOnly) {
+                e.preventDefault();
+                e.stopPropagation();
+              }
+            }}
+            onClick={(e) => {
+              if (!readOnly && !img) {
+                e.stopPropagation();
+                document.getElementById(`img-upload-${index}`)?.click();
+              }
+            }}
+          >
+            {img ? (
+              <>
+                <img
+                  src={img}
+                  alt="Page artwork"
+                  className="w-full h-full object-cover"
+                />
+                {!readOnly && index === currentPreviewPage && (
+                  <>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddText(index);
+                      }}
+                      className="absolute top-2 right-2 z-10 h-8 w-8 p-0 bg-primary hover:bg-primary/90"
+                      size="sm"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        document.getElementById(`img-upload-${index}`)?.click();
+                      }}
+                      className="absolute top-2 left-2 z-10 h-8 px-2 text-xs bg-white hover:bg-gray-100 border border-gray-300"
+                      size="sm"
+                      variant="outline"
+                    >
+                      Change Image
+                    </Button>
+                  </>
+                )}
+                {pageTexts.map((textOverlay) => (
+                  <>
+                    {/* Edit Modal - positioned in center */}
+                    {editingTextId === textOverlay.id && index === currentPreviewPage && (
+                      <div
+                        className="absolute bg-white border-2 border-blue-500 rounded p-2 shadow-lg flex items-center gap-2 z-30"
+                        style={{
+                          left: "50%",
+                          top: "50%",
+                          transform: "translate(-50%, -50%)",
+                          fontSize: "14px",
+                        }}
+                      >
+                        <Textarea
+                          value={newTextValue}
+                          onChange={(e) => setNewTextValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                              handleTextUpdate(textOverlay.id, index);
+                            } else if (e.key === "Escape") {
+                              setEditingTextId(null);
+                              setNewTextValue("");
+                            }
+                          }}
+                          rows={3}
+                          className="min-w-[240px] resize-none"
+                          autoFocus
+                          />
+                        <div className="flex gap-1">
+                          <Button
+                            onClick={() => toggleTextFormat(textOverlay.id, index, "bold")}
+                            size="sm"
+                            variant={textOverlay.bold ? "default" : "outline"}
+                            className="h-8 px-2"
+                            title="Bold"
+                          >
+                            <Bold className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={() => toggleTextFormat(textOverlay.id, index, "italic")}
+                            size="sm"
+                            variant={textOverlay.italic ? "default" : "outline"}
+                            className="h-8 px-2"
+                            title="Italic"
+                          >
+                            <Italic className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={() => toggleTextFormat(textOverlay.id, index, "underline")}
+                            size="sm"
+                            variant={textOverlay.underline ? "default" : "outline"}
+                            className="h-8 px-2"
+                            title="Underline"
+                          >
+                            <Underline className="h-4 w-4" />
+                          </Button>
+                          <input
+                            type="color"
+                            value={textOverlay.color}
+                            onChange={(e) =>
+                              handleTextStyleChange(
+                                textOverlay.id,
+                                index,
+                                "color",
+                                e.target.value
+                              )
+                            }
+                            className="w-8 h-8 cursor-pointer"
+                          />
+                          <input
+                            type="number"
+                            value={textOverlay.fontSize}
+                            onChange={(e) =>
+                              handleTextStyleChange(
+                                textOverlay.id,
+                                index,
+                                "fontSize",
+                                parseInt(e.target.value) || 24
+                              )
+                            }
+                            min="12"
+                            max="72"
+                            className="w-16 px-1 border rounded"
+                            style={{ fontSize: "14px" }}
+                          />
+                          <Button
+                            onClick={() => handleTextUpdate(textOverlay.id, index)}
+                            size="sm"
+                            className="h-8 px-2"
+                          >
+                            <Save className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            onClick={() => handleTextDelete(textOverlay.id, index)}
+                            size="sm"
+                            variant="destructive"
+                            className="h-8 px-2"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Text Display */}
+                    <div
+                      key={textOverlay.id}
+                      onMouseDown={(e) => {
+                        if (!readOnly && index === currentPreviewPage && !editingTextId) {
+                          e.stopPropagation();
+                          handleTextMouseDown(e, textOverlay.id, index);
+                        }
+                      }}
+                      onDoubleClick={(e) => {
+                        if (!readOnly && index === currentPreviewPage) {
+                          e.stopPropagation();
+                          handleTextDoubleClick(textOverlay.id);
+                        }
+                      }}
+                      onDragOver={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.stopPropagation();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute ${!readOnly && index === currentPreviewPage ? "cursor-move hover:ring-2 hover:ring-blue-400" : ""}`}
+                      style={{
+                        left: `${textOverlay.x}%`,
+                        top: `${textOverlay.y}%`,
+                        transform: "translate(-50%, -50%)",
+                        fontSize: `${textOverlay.fontSize}px`,
+                        color: textOverlay.color,
+                        fontFamily: textOverlay.fontFamily,
+                        fontWeight: textOverlay.bold ? "bold" : "normal",
+                        fontStyle: textOverlay.italic ? "italic" : "normal",
+                        textDecoration: textOverlay.underline ? "underline" : "none",
+                        textShadow: "1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8)",
+                        whiteSpace: "nowrap",
+                        zIndex: 10,
+                        pointerEvents: editingTextId === textOverlay.id ? "none" : "auto",
+                        whiteSpace: "pre-wrap",
+                        width: "max-content",
+                      }}
+                    >
+                      {textOverlay.text}
+                      {!readOnly && index === currentPreviewPage && editingTextId !== textOverlay.id && (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTextDelete(textOverlay.id, index);
+                          }}
+                          size="sm"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-5 w-5 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                ))}
+              </>
+            ) : (
+              !readOnly && "Drop image here or click to upload"
+            )}
+
+            {!readOnly && (
+              <input
+                id={`img-upload-${index}`}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) =>
+                  handleImageUpload(e.target.files[0], index)
+                }
+              />
+            )}
+          </div>
         </div>
-        {/* } */}
-      </div>
-    ),
-  }));
+      ),
+    };
+  });
 
   const getWordCount = (html = "") => {
     return html
@@ -207,31 +513,38 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
       {
         !readOnly && (
           <div className="grid grid-cols-6 gap-3 mb-6 mt-6">
-            {pages.map((page, index) => (
-              <div
-                key={index}
-                onClick={() => setCurrentPreviewPage(index)}
-                className={`h-20 border rounded-md cursor-pointer overflow-hidden
-                  flex items-center justify-center text-xs
-                  ${currentPreviewPage === index
-                    ? "border-black ring-1 ring-black"
-                    : "border-gray-300"}
-                `}
-              >
-                {page?.content?.props?.children?.props?.children?.[0]?.props?.src ? (
-                  <img
-                    src={
-                      page.content.props.children.props.children?.[0]?.props?.src
-                    }
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-gray-400">
-                    {readOnly ? "No Image" : `Page ${index + 1}`}
-                  </span>
-                )}
-              </div>
-            ))}
+            {pages.map((page, index) => {
+              const hasImage = pageImages[index] !== null && pageImages[index] !== undefined;
+              return (
+                <div
+                  key={index}
+                  onClick={() => setCurrentPreviewPage(index)}
+                  className={`h-20 border rounded-md cursor-pointer overflow-hidden relative
+                    flex items-center justify-center text-xs
+                    ${currentPreviewPage === index
+                      ? "border-black ring-1 ring-black"
+                      : "border-gray-300"}
+                  `}
+                >
+                  {hasImage ? (
+                    <>
+                      <img
+                        src={pageImages[index]}
+                        alt={`Page ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] px-1 py-0.5 text-center">
+                        Page {index + 1}
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-gray-400">
+                      Page {index + 1}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )
       }

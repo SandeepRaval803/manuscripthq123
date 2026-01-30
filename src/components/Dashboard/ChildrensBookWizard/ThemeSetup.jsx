@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { ChildBookPreview } from "./ChildBookPreview";
-import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -20,6 +19,8 @@ export function ThemeStep({
   getPreviewStyles,
   pageImages,
   setPageImages,
+  textOverlays,
+  setTextOverlays,
   ageGroup,
   trimSize,
   binding,
@@ -72,6 +73,8 @@ export function ThemeStep({
               getPreviewStyles={getPreviewStyles}
               pageImages={pageImages}
               setPageImages={setPageImages}
+              textOverlays={textOverlays}
+              setTextOverlays={setTextOverlays}
               readOnly={false}
               ageGroup={ageGroup}
               trimSize={trimSize}
@@ -155,20 +158,48 @@ export function ThemeStep({
               <div className="text-sm text-gray-500 italic">
                 No images uploaded yet
               </div>
-              :uploadedImages.map((image, i) => (
-                <div
-                  className={`w-full border rounded-md overflow-hidden bg-gray-100 ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}`}
-                  style={{
-                    aspectRatio: TRIM_ASPECT_RATIO[trimSize] || "1 / 1",
-                  }}
-                >
-                  <img
-                    src={image}
-                    alt={`Cover design ${i + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
+              :pageImages.map((image, pageIndex) => {
+                if (!image) return null;
+                const pageTexts = (textOverlays && textOverlays[pageIndex]) ? textOverlays[pageIndex] : [];
+                return (
+                  <div
+                    key={pageIndex}
+                    className={`w-full border rounded-md overflow-hidden bg-gray-100 relative ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}`}
+                    style={{
+                      aspectRatio: TRIM_ASPECT_RATIO[trimSize] || "1 / 1",
+                    }}
+                  >
+                    <img
+                      src={image}
+                      alt={`Cover design ${pageIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {pageTexts.map((textOverlay) => (
+                      <div
+                        key={textOverlay.id}
+                        className="absolute"
+                        style={{
+                          left: `${textOverlay.x}%`,
+                          top: `${textOverlay.y}%`,
+                          transform: "translate(-50%, -50%)",
+                          fontSize: `${Math.max(8, Math.min(textOverlay.fontSize * 0.25, 14))}px`,
+                          color: textOverlay.color,
+                          fontFamily: textOverlay.fontFamily,
+                          fontWeight: textOverlay.bold ? "bold" : "normal",
+                          fontStyle: textOverlay.italic ? "italic" : "normal",
+                          textDecoration: textOverlay.underline ? "underline" : "none",
+                          textShadow: "0.5px 0.5px 1px rgba(255,255,255,0.8), -0.5px -0.5px 1px rgba(255,255,255,0.8)",
+                          whiteSpace: "pre-wrap",
+                          pointerEvents: "none",
+                          width: "max-content",
+                        }}
+                      >
+                        {textOverlay.text}
+                      </div>
+                    ))}
+                  </div>
+                );
+              }).filter(Boolean)}
             </div>
           </CardContent>
         </Card>

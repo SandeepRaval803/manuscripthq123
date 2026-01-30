@@ -23,6 +23,9 @@ export function ChildrensBookWizard() {
   const [pageImages, setPageImages] = useState(
     Array(TOTAL_PAGES).fill(null)
   );
+  const [textOverlays, setTextOverlays] = useState(
+    Array(TOTAL_PAGES).fill(null).map(() => [])
+  );
 
   // Theme and formatting settings
   const [selectedTheme, setSelectedTheme] = useState("fiction");
@@ -191,15 +194,13 @@ export function ChildrensBookWizard() {
       <div>
         {currentStep === "theme" && (
           <ThemeStep
-            selectedTheme={selectedTheme}
-            setSelectedTheme={setSelectedTheme}
-            customSettings={customSettings}
-            setCustomSettings={setCustomSettings}
             metadata={metadata}
             manuscriptData={manuscriptData}
             getPreviewStyles={getPreviewStyles}
             pageImages={pageImages}
             setPageImages={setPageImages}
+            textOverlays={textOverlays}
+            setTextOverlays={setTextOverlays}
             ageGroup={ageGroup}
             trimSize={trimSize}
             binding={binding}
@@ -218,9 +219,8 @@ export function ChildrensBookWizard() {
             metadata={metadata}
             manuscriptData={manuscriptData}
             getPreviewStyles={getPreviewStyles}
-            selectedTheme={selectedTheme}
-            exportFormat={exportFormat}
             pageImages={pageImages}
+            textOverlays={textOverlays}
             ageGroup={ageGroup}
             trimSize={trimSize}
             binding={binding}
@@ -238,6 +238,7 @@ export function ChildrensBookWizard() {
             trimSize={trimSize}
             binding={binding}
             pageImages={pageImages}
+            textOverlays={textOverlays}
           />
         )}
       </div>

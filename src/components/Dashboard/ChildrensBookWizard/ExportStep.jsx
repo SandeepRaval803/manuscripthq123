@@ -13,7 +13,7 @@ const TRIM_PDF_SIZE = {
   "8x10": { w: 8, h: 10 },
   "10x8": { w: 10, h: 8 },
 };
-export function ExportStep({ exportFormat, setExportFormat, manuscriptData, metadata, getPreviewStyles, trimSize, pageImages }) {
+export function ExportStep({ exportFormat, setExportFormat, manuscriptData, metadata, getPreviewStyles, trimSize, pageImages, textOverlays }) {
   const [exporting, setExporting] = useState(false)
 
   const generateTableOfContents = () => {
@@ -224,7 +224,7 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     URL.revokeObjectURL(url)
   }
 
-  const addImageCover = (pdf, imgData, pageW, pageH) => {
+  const addImageCover = (pdf, imgData, pageW, pageH, textOverlaysForPage = []) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.src = imgData;
@@ -263,6 +263,74 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
           drawW,
           drawH
         );
+
+        // Add text overlays
+        if (textOverlaysForPage && textOverlaysForPage.length > 0) {
+          // Calculate text position relative to the actual image area in PDF
+          textOverlaysForPage.forEach((textOverlay) => {
+            // Position text relative to the image bounds (offsetX, offsetY, drawW, drawH)
+            const textX = offsetX + (textOverlay.x / 100) * drawW;
+            const textY = offsetY + (textOverlay.y / 100) * drawH;
+            
+            // Convert font size from pixels to points
+            // Assuming 96 DPI for screen, convert to inches then to points
+            const fontSizeInPoints = (textOverlay.fontSize / 96) * 72;
+            
+            // Set text color (convert hex to RGB)
+            const hex = textOverlay.color.replace('#', '');
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            
+            pdf.setTextColor(r, g, b);
+            pdf.setFontSize(fontSizeInPoints);
+            
+            // Map font family to jsPDF supported fonts
+            let pdfFont = 'helvetica';
+            const fontFamily = textOverlay.fontFamily?.toLowerCase() || '';
+            if (fontFamily.includes('times') || fontFamily.includes('serif')) {
+              pdfFont = 'times';
+            } else if (fontFamily.includes('courier') || fontFamily.includes('mono')) {
+              pdfFont = 'courier';
+            }
+            
+            // Determine font style based on bold and italic
+            let fontStyle = 'normal';
+            if (textOverlay.bold && textOverlay.italic) {
+              fontStyle = 'bolditalic';
+            } else if (textOverlay.bold) {
+              fontStyle = 'bold';
+            } else if (textOverlay.italic) {
+              fontStyle = 'italic';
+            }
+            
+            pdf.setFont(pdfFont, fontStyle);
+            
+            // Add text - jsPDF uses bottom-left as origin, so we need to adjust
+            // The text position should be centered at the specified point
+            const options = {
+              align: 'center',
+              baseline: 'middle'
+            };
+            
+            // Add underline if needed (jsPDF doesn't have direct underline, so we'll draw a line)
+            pdf.text(textOverlay.text, textX, textY, options);
+            
+            if (textOverlay.underline) {
+              // Calculate text width for underline
+              const textWidth = pdf.getTextWidth(textOverlay.text);
+              const underlineY = textY + (fontSizeInPoints / 72) * 0.3; // Position underline slightly below text
+              pdf.setDrawColor(r, g, b);
+              pdf.setLineWidth(fontSizeInPoints / 72 * 0.05); // Thin line
+              pdf.line(
+                textX - textWidth / 2,
+                underlineY,
+                textX + textWidth / 2,
+                underlineY
+              );
+            }
+          });
+        }
   
         resolve();
       };
@@ -299,10 +367,19 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     });
   
     const images = pageImages.filter(Boolean);
+    const imageIndices = [];
+    let currentIndex = 0;
+    for (let i = 0; i < pageImages.length; i++) {
+      if (pageImages[i]) {
+        imageIndices.push(i);
+      }
+    }
   
     for (let i = 0; i < images.length; i++) {
       if (i !== 0) pdf.addPage();
-      await addImageCover(pdf, images[i], size.w, size.h);
+      const pageIndex = imageIndices[i];
+      const textOverlaysForPage = textOverlays && textOverlays[pageIndex] ? textOverlays[pageIndex] : [];
+      await addImageCover(pdf, images[i], size.w, size.h, textOverlaysForPage);
     }
   
     const name = (metadata.title || "storybook")
