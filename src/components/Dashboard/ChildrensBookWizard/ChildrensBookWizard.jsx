@@ -148,6 +148,35 @@ export function ChildrensBookWizard() {
           <p className="text-sm text-muted-foreground">
             Create a children&apos;s book
           </p>
+          {/* Sample Table below the title */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-[350px] bg-white border border-gray-200 rounded-md text-sm shadow">
+              <thead>
+                <tr className="bg-muted">
+                  <th className="px-3 py-2 border-b font-semibold text-left">Audience</th>
+                  <th className="px-3 py-2 border-b font-semibold text-left">Typical words/page</th>
+                  <th className="px-3 py-2 border-b font-semibold text-left">Typical total words</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="px-3 py-2 border-b">0–3 (Board Books)</td>
+                  <td className="px-3 py-2 border-b">0–10</td>
+                  <td className="px-3 py-2 border-b">0–150</td>
+                </tr>
+                <tr className="bg-muted/40">
+                  <td className="px-3 py-2 border-b">3–5</td>
+                  <td className="px-3 py-2 border-b">10–40</td>
+                  <td className="px-3 py-2 border-b">200–600</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2">5–7</td>
+                  <td className="px-3 py-2">30–100</td>
+                  <td className="px-3 py-2">500–1500</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div className="hidden sm:flex">
           {steps.map((step, index) => (
