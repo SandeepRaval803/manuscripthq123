@@ -121,6 +121,7 @@ export function ThemeStep({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0">Select trim size</SelectItem>
+                      <SelectItem value="6x9">6 × 9 (Portrait)</SelectItem>
                       <SelectItem value="8x8">8 × 8 (Square)</SelectItem>
                       <SelectItem value="8.5x8.5">8.5 × 8.5 (Square)</SelectItem>
                       <SelectItem value="8x10">8 × 10 (Portrait)</SelectItem>

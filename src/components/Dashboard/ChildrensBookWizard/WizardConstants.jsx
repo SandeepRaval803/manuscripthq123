@@ -95,6 +95,7 @@ export const themeOptions = [
 ]
 
 export const TRIM_ASPECT_RATIO = {
+  "6x9": "2 / 3",
   "8x8": "1 / 1",
   "8.5x8.5": "1 / 1",
   "8x10": "4 / 5",   

@@ -28,7 +28,6 @@ const AGE_GUIDELINES = {
 };
 export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, pageImages, setPageImages, textOverlays, setTextOverlays, readOnly=false, ageGroup, trimSize, binding }) {
   const [currentPreviewPage, setCurrentPreviewPage] = useState(0);
-  const [draggingTextId, setDraggingTextId] = useState(null);
   const [editingTextId, setEditingTextId] = useState(null);
   const [newTextValue, setNewTextValue] = useState("");
   const imageContainerRef = useRef(null);
@@ -75,7 +74,6 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
   const handleTextMouseDown = (e, textId, pageIndex) => {
     if (editingTextId) return; // Don't drag if editing
     e.preventDefault();
-    setDraggingTextId(textId);
     
     const handleMouseMove = (e) => {
       if (!imageContainerRef.current) return;
@@ -101,7 +99,6 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
     };
 
     const handleMouseUp = () => {
-      setDraggingTextId(null);
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
@@ -262,101 +259,110 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                     {/* Edit Modal - positioned in center */}
                     {editingTextId === textOverlay.id && index === currentPreviewPage && (
                       <div
-                        className="absolute bg-white border-2 border-blue-500 rounded p-2 shadow-lg flex items-center gap-2 z-30"
+                        className="absolute bg-white border-2 border-blue-500 rounded p-2 shadow-lg flex flex-col md:flex-row items-center gap-2 md:gap-2 z-30"
                         style={{
                           left: "50%",
                           top: "50%",
                           transform: "translate(-50%, -50%)",
                           fontSize: "14px",
+                          width: "90%",
+                          maxWidth: "95%",
+                          boxSizing: "border-box",
                         }}
                       >
-                        <Textarea
-                          value={newTextValue}
-                          onChange={(e) => setNewTextValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                              handleTextUpdate(textOverlay.id, index);
-                            } else if (e.key === "Escape") {
-                              setEditingTextId(null);
-                              setNewTextValue("");
-                            }
-                          }}
-                          rows={3}
-                          className="min-w-[240px] resize-none"
-                          autoFocus
+                        <div className="flex flex-col w-full md:w-auto" style={{ flex: 1 }}>
+                          <Textarea
+                            value={newTextValue}
+                            onChange={(e) => setNewTextValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                                handleTextUpdate(textOverlay.id, index);
+                              } else if (e.key === "Escape") {
+                                setEditingTextId(null);
+                                setNewTextValue("");
+                              }
+                            }}
+                            rows={3}
+                            className="w-full min-w-0 resize-none"
+                            autoFocus
                           />
-                        <div className="flex gap-1">
-                          <Button
-                            onClick={() => toggleTextFormat(textOverlay.id, index, "bold")}
-                            size="sm"
-                            variant={textOverlay.bold ? "default" : "outline"}
-                            className="h-8 px-2"
-                            title="Bold"
-                          >
-                            <Bold className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            onClick={() => toggleTextFormat(textOverlay.id, index, "italic")}
-                            size="sm"
-                            variant={textOverlay.italic ? "default" : "outline"}
-                            className="h-8 px-2"
-                            title="Italic"
-                          >
-                            <Italic className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            onClick={() => toggleTextFormat(textOverlay.id, index, "underline")}
-                            size="sm"
-                            variant={textOverlay.underline ? "default" : "outline"}
-                            className="h-8 px-2"
-                            title="Underline"
-                          >
-                            <Underline className="h-4 w-4" />
-                          </Button>
-                          <input
-                            type="color"
-                            value={textOverlay.color}
-                            onChange={(e) =>
-                              handleTextStyleChange(
-                                textOverlay.id,
-                                index,
-                                "color",
-                                e.target.value
-                              )
-                            }
-                            className="w-8 h-8 cursor-pointer"
-                          />
-                          <input
-                            type="number"
-                            value={textOverlay.fontSize}
-                            onChange={(e) =>
-                              handleTextStyleChange(
-                                textOverlay.id,
-                                index,
-                                "fontSize",
-                                parseInt(e.target.value) || 24
-                              )
-                            }
-                            min="12"
-                            max="72"
-                            className="w-16 px-1 border rounded"
-                            style={{ fontSize: "14px" }}
-                          />
-                          <Button
-                            onClick={() => handleTextUpdate(textOverlay.id, index)}
-                            size="sm"
-                            className="h-8 px-2"
-                          >
-                            <Save className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            onClick={() => handleTextDelete(textOverlay.id, index)}
-                            size="sm"
-                            variant="destructive"
-                            className="h-8 px-2"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          <div className="flex justify-between items-center pt-4 me-2">
+                            <div className="flex gap-1 flex-wrap justify-between md:justify-start mt-2  md:mt-0">
+                              <Button
+                                onClick={() => toggleTextFormat(textOverlay.id, index, "bold")}
+                                size="sm"
+                                variant={textOverlay.bold ? "default" : "outline"}
+                                className="h-8 px-2"
+                                title="Bold"
+                              >
+                                <Bold className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => toggleTextFormat(textOverlay.id, index, "italic")}
+                                size="sm"
+                                variant={textOverlay.italic ? "default" : "outline"}
+                                className="h-8 px-2"
+                                title="Italic"
+                              >
+                                <Italic className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => toggleTextFormat(textOverlay.id, index, "underline")}
+                                size="sm"
+                                variant={textOverlay.underline ? "default" : "outline"}
+                                className="h-8 px-2"
+                                title="Underline"
+                              >
+                                <Underline className="h-4 w-4" />
+                              </Button>
+                              <input
+                                type="color"
+                                value={textOverlay.color}
+                                onChange={(e) =>
+                                  handleTextStyleChange(
+                                    textOverlay.id,
+                                    index,
+                                    "color",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-8 h-8 cursor-pointer"
+                              />
+                              <input
+                                type="number"
+                                value={textOverlay.fontSize}
+                                onChange={(e) =>
+                                  handleTextStyleChange(
+                                    textOverlay.id,
+                                    index,
+                                    "fontSize",
+                                    parseInt(e.target.value) || 24
+                                  )
+                                }
+                                min="12"
+                                max="72"
+                                className="w-16 px-1 border rounded"
+                                style={{ fontSize: "14px" }}
+                              />
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                onClick={() => handleTextUpdate(textOverlay.id, index)}
+                                size="sm"
+                                className="h-8 px-2"
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => handleTextDelete(textOverlay.id, index)}
+                                size="sm"
+                                variant="destructive"
+                                className="h-8 px-2"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
