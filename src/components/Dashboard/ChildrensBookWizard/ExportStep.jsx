@@ -266,15 +266,21 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
 
         // Add text overlays
         if (textOverlaysForPage && textOverlaysForPage.length > 0) {
-          // Calculate text position relative to the actual image area in PDF
+          // Position text relative to PAGE (same as preview). jsPDF uses top-left origin.
           textOverlaysForPage.forEach((textOverlay) => {
-            // Position text relative to the image bounds (offsetX, offsetY, drawW, drawH)
-            const textX = offsetX + (textOverlay.x / 100) * drawW;
-            const textY = offsetY + (textOverlay.y / 100) * drawH;
-            
+            const centerX = (textOverlay.x / 100) * pageW;
+            const centerY = (textOverlay.y / 100) * pageH;
+
             // Convert font size from pixels to points
-            // Assuming 96 DPI for screen, convert to inches then to points
             const fontSizeInPoints = (textOverlay.fontSize / 96) * 72;
+            const fontSizeInches = fontSizeInPoints / 72;
+            const lineHeightFactor = 1.15;
+            const lineCount = (textOverlay.text || '').split(/\r?\n/).length || 1;
+            const textBlockHeight = fontSizeInches * lineHeightFactor * lineCount;
+            
+            // Match preview: center at (x,y). Use baseline 'top' + offset so text block center = (centerX, centerY)
+            const textX = centerX;
+            const textY = centerY - textBlockHeight / 2;
             
             // Set text color (convert hex to RGB)
             const hex = textOverlay.color.replace('#', '');
@@ -306,20 +312,21 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
             
             pdf.setFont(pdfFont, fontStyle);
             
-            // Add text - jsPDF uses bottom-left as origin, so we need to adjust
-            // The text position should be centered at the specified point
+            // align: center = x is center. baseline: top = y is top of text block (matches preview translate -50%,-50%)
             const options = {
               align: 'center',
-              baseline: 'middle'
+              baseline: 'top'
             };
             
             // Add underline if needed (jsPDF doesn't have direct underline, so we'll draw a line)
             pdf.text(textOverlay.text, textX, textY, options);
             
             if (textOverlay.underline) {
-              // Calculate text width for underline
-              const textWidth = pdf.getTextWidth(textOverlay.text);
-              const underlineY = textY + (fontSizeInPoints / 72) * 0.3; // Position underline slightly below text
+              const lines = (textOverlay.text || '').split(/\r?\n/);
+              const textWidth = lines.length
+                ? Math.max(...lines.map((l) => pdf.getTextWidth(l)))
+                : pdf.getTextWidth(textOverlay.text);
+              const underlineY = textY + textBlockHeight - fontSizeInches * 0.2;
               pdf.setDrawColor(r, g, b);
               pdf.setLineWidth(fontSizeInPoints / 72 * 0.05); // Thin line
               pdf.line(

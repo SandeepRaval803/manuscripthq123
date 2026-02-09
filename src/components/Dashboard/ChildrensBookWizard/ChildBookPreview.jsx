@@ -51,7 +51,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
     
     const newText = {
       id: Date.now().toString(),
-      text: "Double click to edit",
+      text: "",
       x: 50,
       y: 50,
       fontSize: 24,
@@ -273,6 +273,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                         <div className="flex flex-col w-full md:w-auto" style={{ flex: 1 }}>
                           <Textarea
                             value={newTextValue}
+                            placeholder="Double click to edit"
                             onChange={(e) => setNewTextValue(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -285,9 +286,34 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                             rows={3}
                             className="w-full min-w-0 resize-none"
                             autoFocus
+                            style={{
+                              fontWeight: textOverlay.bold ? "bold" : "normal",
+                              fontStyle: textOverlay.italic ? "italic" : "normal",
+                              textDecoration: textOverlay.underline ? "underline" : "none",
+                              fontSize: `${textOverlay.fontSize}px`,
+                              color: textOverlay.color,
+                              fontFamily: textOverlay.fontFamily,
+                            }}
                           />
+                          <div
+                            style={{
+                              fontWeight: textOverlay.bold ? "bold" : "normal",
+                              fontStyle: textOverlay.italic ? "italic" : "normal",
+                              textDecoration: textOverlay.underline ? "underline" : "none",
+                              fontSize: `${textOverlay.fontSize}px`,
+                              color: textOverlay.color,
+                              fontFamily: textOverlay.fontFamily,
+                              margin: "8px 0 0 0",
+                              wordBreak: "break-word",
+                              padding: "0.25rem",
+                              background: "#f6f6f9",
+                              borderRadius: "4px",
+                              minHeight: "30px"
+                            }}
+                          >
+                          </div>
                           <div className="flex justify-between items-center pt-4 me-2">
-                            <div className="flex gap-1 flex-wrap justify-between md:justify-start mt-2  md:mt-0">
+                            <div className="flex gap-1 flex-wrap justify-between md:justify-start mt-2 md:mt-0">
                               <Button
                                 onClick={() => toggleTextFormat(textOverlay.id, index, "bold")}
                                 size="sm"
@@ -315,6 +341,26 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                               >
                                 <Underline className="h-4 w-4" />
                               </Button>
+                              {/* Font Family Selector */}
+                              <select
+                                value={textOverlay.fontFamily || "Arial"}
+                                onChange={(e) =>
+                                  handleTextStyleChange(
+                                    textOverlay.id,
+                                    index,
+                                    "fontFamily",
+                                    e.target.value
+                                  )
+                                }
+                                className="h-8 px-2 rounded border text-xs"
+                                style={{ minWidth: 80 }}
+                              >
+                                <option value="Arial" style={{ fontFamily: "Arial" }}>Arial</option>
+                                <option value="Times New Roman" style={{ fontFamily: "Times New Roman" }}>Times New Roman</option>
+                                <option value="Comic Sans MS" style={{ fontFamily: "Comic Sans MS" }}>Comic Sans MS</option>
+                                <option value="Courier New" style={{ fontFamily: "Courier New" }}>Courier New</option>
+                                <option value="Georgia" style={{ fontFamily: "Georgia" }}>Georgia</option>
+                              </select>
                               <input
                                 type="color"
                                 value={textOverlay.color}
@@ -399,7 +445,6 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                         fontWeight: textOverlay.bold ? "bold" : "normal",
                         fontStyle: textOverlay.italic ? "italic" : "normal",
                         textDecoration: textOverlay.underline ? "underline" : "none",
-                        textShadow: "1px 1px 2px rgba(255,255,255,0.8), -1px -1px 2px rgba(255,255,255,0.8)",
                         whiteSpace: "nowrap",
                         zIndex: 10,
                         pointerEvents: editingTextId === textOverlay.id ? "none" : "auto",

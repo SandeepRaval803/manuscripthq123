@@ -35,7 +35,7 @@ export function ThemeStep({
   const bindingType = BINDING_PREVIEW_TYPE[binding] || "";
   return (
     <div className="space-y-6">
-      {isPreviewLocked ? (
+      {!isPreviewLocked ? (
         <div className="absolute inset-0 z-20 bg-white/80 backdrop-blur-sm flex items-center justify-center">
         <div className="w-[320px] rounded-lg border bg-white p-4 shadow-lg space-y-3">
           <h3 className="text-sm font-semibold text-center">
