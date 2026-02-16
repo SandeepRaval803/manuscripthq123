@@ -373,17 +373,63 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
       format: [size.w, size.h],
     });
   
+    // 1. Title Page
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(36);
+    pdf.text(metadata.title || "Untitled", size.w / 2, size.h * 0.4, { align: "center" });
+    
+    if (metadata.subTitle) {
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(20);
+      pdf.text(metadata.subTitle, size.w / 2, size.h * 0.48, { align: "center" });
+    }
+    
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(16);
+    pdf.text(`by ${metadata.author || "Unknown Author"}`, size.w / 2, size.h * 0.6, { align: "center" });
+
+    // 2. Copyright Page
+    pdf.addPage();
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.text("Copyright Information", 0.75, 1.0);
+    
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
+    let yPos = 1.4;
+    const spacing = 0.25;
+    
+    pdf.text(`Copyright © ${new Date().getFullYear()} by ${metadata.author?.trim() || "N/A"}`, 0.75, yPos); yPos += spacing;
+    pdf.text("All Rights Reserved.", 0.75, yPos); yPos += spacing * 1.5;
+    
+    pdf.text(`ISBN: ${metadata.ISBN || "N/A"}`, 0.75, yPos); yPos += spacing;
+    pdf.text(`Cover Design By: ${metadata.coverdesignby || "N/A"}`, 0.75, yPos); yPos += spacing;
+    pdf.text(`Cover Illustration By: ${metadata.coverillustrationby || "N/A"}`, 0.75, yPos); yPos += spacing;
+    pdf.text(`Edited By: ${metadata.editedby || "N/A"}`, 0.75, yPos); yPos += spacing;
+    pdf.text(`Edition: ${metadata.edition || "N/A"}`, 0.75, yPos); yPos += spacing;
+    pdf.text(`Published By: ${metadata.publisher || "N/A"}`, 0.75, yPos); yPos += spacing * 2;
+    
+    if (metadata.description) {
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.text("ABOUT THIS BOOK", 0.75, yPos); yPos += spacing * 0.8;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      const splitDesc = pdf.splitTextToSize(metadata.description, size.w - 1.5);
+      pdf.text(splitDesc, 0.75, yPos);
+    }
+
+    // 3. Artwork Pages
     const images = pageImages.filter(Boolean);
     const imageIndices = [];
-    let currentIndex = 0;
     for (let i = 0; i < pageImages.length; i++) {
-      if (pageImages[i]) {
-        imageIndices.push(i);
-      }
+        if (pageImages[i]) {
+            imageIndices.push(i);
+        }
     }
-  
+
     for (let i = 0; i < images.length; i++) {
-      if (i !== 0) pdf.addPage();
+      pdf.addPage();
       const pageIndex = imageIndices[i];
       const textOverlaysForPage = textOverlays && textOverlays[pageIndex] ? textOverlays[pageIndex] : [];
       await addImageCover(pdf, images[i], size.w, size.h, textOverlaysForPage);
@@ -404,8 +450,40 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
   
     const images = pageImages.filter(Boolean);
   
-    // Build HTML pages
-    const pagesHTML = images
+    // Prepend Metadata Pages
+    const metadataPagesHTML = `
+      <section class="page metadata-page" style="text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+        <h1 style="font-size: 3em; margin-bottom: 0.5em;">${metadata.title || "Untitled"}</h1>
+        ${metadata.subTitle ? `<h2 style="font-size: 1.5em; font-style: italic; color: #666; margin-bottom: 2em;">${metadata.subTitle}</h2>` : ''}
+        <p style="font-size: 1.25em;">by ${metadata.author || "Unknown Author"}</p>
+      </section>
+
+      <section class="page metadata-page" style="padding: 10%; display: flex; flex-direction: column; justify-content: center;">
+        <div style="max-width: 500px; margin: 0 auto; text-align: left;">
+          <h2 style="font-size: 1.25em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">Copyright Information</h2>
+          <div style="line-height: 1.6; color: #333;">
+            <p>Copyright © ${new Date().getFullYear()} by ${metadata.author?.trim() || "N/A"}</p>
+            <p>All Rights Reserved.</p>
+            <br/>
+            <p><strong>ISBN:</strong> ${metadata.ISBN || "N/A"}</p>
+            <p><strong>Cover Design By:</strong> ${metadata.coverdesignby || "N/A"}</p>
+            <p><strong>Cover Illustration By:</strong> ${metadata.coverillustrationby || "N/A"}</p>
+            <p><strong>Edited By:</strong> ${metadata.editedby || "N/A"}</p>
+            <p><strong>Edition:</strong> ${metadata.edition || "N/A"}</p>
+            <p><strong>Published By:</strong> ${metadata.publisher || "N/A"}</p>
+          </div>
+          ${metadata.description ? `
+            <div style="margin-top: 40px; border-top: 1px solid #eee; pt-20px;">
+              <p style="font-size: 0.75em; font-weight: bold; color: #888; text-transform: uppercase;">About this book</p>
+              <p style="color: #444;">${metadata.description}</p>
+            </div>
+          ` : ''}
+        </div>
+      </section>
+    `;
+
+    // Build Artwork pages
+    const artworkPagesHTML = images
       .map(
         (img, index) => `
         <section class="page">
@@ -414,6 +492,8 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
       `
       )
       .join("");
+    
+    const pagesHTML = metadataPagesHTML + artworkPagesHTML;
   
     const epubHTML = `<!DOCTYPE html>
   <html>

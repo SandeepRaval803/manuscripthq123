@@ -17,7 +17,7 @@ import { fetchManuscriptData, updateManuscriptData } from "@/apiCall/auth";
 const TOTAL_PAGES = 32;
 export function ChildrensBookWizard() {
   const { user, token } = useAuth();
-  const [currentStep, setCurrentStep] = useState("theme");
+  const [currentStep, setCurrentStep] = useState("metadata");
   const [loading, setLoading] = useState(false);
   const [manuscriptData, setManuscriptData] = useState(null);
   const [pageImages, setPageImages] = useState(
@@ -68,7 +68,7 @@ export function ChildrensBookWizard() {
         const data = await fetchManuscriptData(user, token);
         if (data) {
           setManuscriptData(data);
-          setMetadata(data.manuscript);
+          // setMetadata(data.manuscript);
         } else {
           toast.error("Failed to load manuscript data");
         }
@@ -221,6 +221,11 @@ export function ChildrensBookWizard() {
       <Separator />
 
       <div>
+
+        {currentStep === "metadata" && (
+          <MetadataStep metadata={metadata} setMetadata={setMetadata} />
+        )}
+
         {currentStep === "theme" && (
           <ThemeStep
             metadata={metadata}
@@ -237,10 +242,6 @@ export function ChildrensBookWizard() {
             setTrimSize={setTrimSize}
             setBinding={setBinding}
           />
-        )}
-
-        {currentStep === "metadata" && (
-          <MetadataStep metadata={metadata} setMetadata={setMetadata} />
         )}
 
         {currentStep === "preview" && (

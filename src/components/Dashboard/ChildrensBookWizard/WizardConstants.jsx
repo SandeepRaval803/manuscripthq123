@@ -2,15 +2,15 @@ import { Palette, FileText, Info, Settings, Baby, Book, BookOpen, GraduationCap,
 
 export const steps = [
   {
+    id: "metadata",
+    name: "Metadata",
+    icon: FileText,
+  },
+  {
     id: "theme",
     name: "Theme",
     icon: Palette,
   },
-  // {
-  //   id: "metadata",
-  //   name: "Metadata",
-  //   icon: FileText,
-  // },
   {
     id: "preview",
     name: "Preview",
