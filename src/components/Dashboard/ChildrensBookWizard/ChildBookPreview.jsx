@@ -109,10 +109,12 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
 
   const handleTextDoubleClick = (textId) => {
     setEditingTextId(textId);
-    const pageTexts = (textOverlays && textOverlays[currentPreviewPage]) ? textOverlays[currentPreviewPage] : [];
+    // Text overlays are keyed by artwork page index (0,1,2...); preview pages 0,1 are title/copyright
+    const artworkIndex = currentPreviewPage >= 2 ? currentPreviewPage - 2 : -1;
+    const pageTexts = (artworkIndex >= 0 && textOverlays && textOverlays[artworkIndex]) ? textOverlays[artworkIndex] : [];
     const text = pageTexts.find((t) => t.id === textId);
     if (text) {
-      setNewTextValue(text.text);
+      setNewTextValue(text.text ?? "");
     }
   };
 
@@ -338,8 +340,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                                 setNewTextValue("");
                               }
                             }}
-                            rows={3}
-                            className="w-full min-w-0 resize-none"
+                            className="w-full min-w-0 min-h-[clamp(4rem,12vh,10rem)] max-h-[25vh] resize-y"
                             autoFocus
                             style={{
                               fontWeight: textOverlay.bold ? "bold" : "normal",
@@ -557,11 +558,16 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
     );
   }
 
+  const trimAspectRatio = trimSize ? (TRIM_ASPECT_RATIO[trimSize] || "1 / 1") : "1 / 1";
+
   return (
     <div className="max-w-2xl mx-auto">
       <div
-        className="bg-white shadow-lg border rounded-lg p-8 mb-8 min-h-[380px] relative"
-        style={styles}
+        className="bg-white shadow-lg border rounded-lg p-8 mb-8 min-h-[380px] relative overflow-hidden"
+        style={{
+          ...styles,
+          aspectRatio: trimAspectRatio,
+        }}
       >
         {currentPage?.content}
         <div className="absolute bottom-4 right-4 text-sm text-gray-500">

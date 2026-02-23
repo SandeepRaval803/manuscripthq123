@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import toast from "react-hot-toast"
 
 const TRIM_PDF_SIZE = {
+  "6x9": { w: 6, h: 9 },
   "8x8": { w: 8, h: 8 },
   "8.5x8.5": { w: 8.5, h: 8.5 },
   "8x10": { w: 8, h: 10 },
@@ -266,21 +267,15 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
 
         // Add text overlays
         if (textOverlaysForPage && textOverlaysForPage.length > 0) {
-          // Position text relative to PAGE (same as preview). jsPDF uses top-left origin.
+          // Calculate text position relative to the actual image area in PDF
           textOverlaysForPage.forEach((textOverlay) => {
-            const centerX = (textOverlay.x / 100) * pageW;
-            const centerY = (textOverlay.y / 100) * pageH;
+            // Position text relative to the image bounds (offsetX, offsetY, drawW, drawH)
+            const textX = offsetX + (textOverlay.x / 100) * drawW;
+            const textY = offsetY + (textOverlay.y / 100) * drawH;
 
             // Convert font size from pixels to points
+            // Assuming 96 DPI for screen, convert to inches then to points
             const fontSizeInPoints = (textOverlay.fontSize / 96) * 72;
-            const fontSizeInches = fontSizeInPoints / 72;
-            const lineHeightFactor = 1.15;
-            const lineCount = (textOverlay.text || '').split(/\r?\n/).length || 1;
-            const textBlockHeight = fontSizeInches * lineHeightFactor * lineCount;
-            
-            // Match preview: center at (x,y). Use baseline 'top' + offset so text block center = (centerX, centerY)
-            const textX = centerX;
-            const textY = centerY - textBlockHeight / 2;
             
             // Set text color (convert hex to RGB)
             const hex = textOverlay.color.replace('#', '');
@@ -312,21 +307,20 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
             
             pdf.setFont(pdfFont, fontStyle);
             
-            // align: center = x is center. baseline: top = y is top of text block (matches preview translate -50%,-50%)
+            // Add text - jsPDF uses bottom-left as origin, so we need to adjust
+            // The text position should be centered at the specified point
             const options = {
               align: 'center',
-              baseline: 'top'
+              baseline: 'middle'
             };
             
             // Add underline if needed (jsPDF doesn't have direct underline, so we'll draw a line)
             pdf.text(textOverlay.text, textX, textY, options);
             
             if (textOverlay.underline) {
-              const lines = (textOverlay.text || '').split(/\r?\n/);
-              const textWidth = lines.length
-                ? Math.max(...lines.map((l) => pdf.getTextWidth(l)))
-                : pdf.getTextWidth(textOverlay.text);
-              const underlineY = textY + textBlockHeight - fontSizeInches * 0.2;
+              // Calculate text width for underline
+              const textWidth = pdf.getTextWidth(textOverlay.text);
+              const underlineY = textY + (fontSizeInPoints / 72) * 0.3; // Position underline slightly below text
               pdf.setDrawColor(r, g, b);
               pdf.setLineWidth(fontSizeInPoints / 72 * 0.05); // Thin line
               pdf.line(
@@ -347,6 +341,70 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
   };
   
   
+  const addTitlePage = (pdf, pageW, pageH) => {
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, pageH, "F");
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(22);
+    pdf.setFont("helvetica", "bold");
+    const title = metadata?.title || "Untitled";
+    const lines = pdf.splitTextToSize(title, pageW - 1);
+    const titleY = pageH / 2 - (lines.length * 0.2) - 0.3;
+    pdf.text(lines, pageW / 2, titleY, { align: "center" });
+    if (metadata?.subTitle) {
+      pdf.setFontSize(14);
+      pdf.setFont("helvetica", "italic");
+      pdf.text(metadata.subTitle, pageW / 2, titleY + lines.length * 0.25 + 0.4, { align: "center" });
+    }
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "normal");
+    const byLine = `by ${metadata?.author || "Unknown Author"}`;
+    pdf.text(byLine, pageW / 2, pageH / 2 + 0.5, { align: "center" });
+  };
+
+  const addCopyrightPage = (pdf, pageW, pageH) => {
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, pageH, "F");
+    pdf.setTextColor(0, 0, 0);
+    const margin = 0.6;
+    let y = margin;
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Copyright Information", margin, y);
+    y += 0.25;
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Copyright © ${new Date().getFullYear()} by ${metadata?.author?.trim() || "N/A"}`, margin, y);
+    y += 0.2;
+    pdf.text("All Rights Reserved.", margin, y);
+    y += 0.35;
+    const items = [
+      ["ISBN:", metadata?.ISBN || "N/A"],
+      ["Cover Design By:", metadata?.coverdesignby || "N/A"],
+      ["Cover Illustration By:", metadata?.coverillustrationby || "N/A"],
+      ["Edited By:", metadata?.editedby || "N/A"],
+      ["Edition:", metadata?.edition || "N/A"],
+      ["Published By:", metadata?.publisher || "N/A"],
+    ];
+    items.forEach(([label, value]) => {
+      pdf.setFont("helvetica", "bold");
+      pdf.text(label + " ", margin, y);
+      const labelW = pdf.getTextWidth(label + " ");
+      pdf.setFont("helvetica", "normal");
+      const valueLines = pdf.splitTextToSize(value, pageW - margin * 2 - labelW);
+      pdf.text(valueLines, margin + labelW, y);
+      y += valueLines.length * 0.2 + 0.15;
+    });
+    if (metadata?.description) {
+      y += 0.2;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("About this book", margin, y);
+      y += 0.2;
+      pdf.setFont("helvetica", "normal");
+      const descLines = pdf.splitTextToSize(metadata.description, pageW - margin * 2);
+      pdf.text(descLines, margin, y);
+    }
+  };
+
   const exportImagesAsPDF = async () => {
     if (!pageImages || pageImages.filter(Boolean).length === 0) {
       toast.error("No images to export");
@@ -373,61 +431,20 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
       format: [size.w, size.h],
     });
   
-    // 1. Title Page
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(36);
-    pdf.text(metadata.title || "Untitled", size.w / 2, size.h * 0.4, { align: "center" });
-    
-    if (metadata.subTitle) {
-      pdf.setFont("helvetica", "italic");
-      pdf.setFontSize(20);
-      pdf.text(metadata.subTitle, size.w / 2, size.h * 0.48, { align: "center" });
-    }
-    
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(16);
-    pdf.text(`by ${metadata.author || "Unknown Author"}`, size.w / 2, size.h * 0.6, { align: "center" });
-
-    // 2. Copyright Page
+    // Page 1: Title (same trim size)
+    addTitlePage(pdf, size.w, size.h);
+    // Page 2: Copyright (same trim size)
     pdf.addPage();
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(16);
-    pdf.text("Copyright Information", 0.75, 1.0);
-    
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(11);
-    let yPos = 1.4;
-    const spacing = 0.25;
-    
-    pdf.text(`Copyright © ${new Date().getFullYear()} by ${metadata.author?.trim() || "N/A"}`, 0.75, yPos); yPos += spacing;
-    pdf.text("All Rights Reserved.", 0.75, yPos); yPos += spacing * 1.5;
-    
-    pdf.text(`ISBN: ${metadata.ISBN || "N/A"}`, 0.75, yPos); yPos += spacing;
-    pdf.text(`Cover Design By: ${metadata.coverdesignby || "N/A"}`, 0.75, yPos); yPos += spacing;
-    pdf.text(`Cover Illustration By: ${metadata.coverillustrationby || "N/A"}`, 0.75, yPos); yPos += spacing;
-    pdf.text(`Edited By: ${metadata.editedby || "N/A"}`, 0.75, yPos); yPos += spacing;
-    pdf.text(`Edition: ${metadata.edition || "N/A"}`, 0.75, yPos); yPos += spacing;
-    pdf.text(`Published By: ${metadata.publisher || "N/A"}`, 0.75, yPos); yPos += spacing * 2;
-    
-    if (metadata.description) {
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(10);
-      pdf.text("ABOUT THIS BOOK", 0.75, yPos); yPos += spacing * 0.8;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(11);
-      const splitDesc = pdf.splitTextToSize(metadata.description, size.w - 1.5);
-      pdf.text(splitDesc, 0.75, yPos);
-    }
-
-    // 3. Artwork Pages
+    addCopyrightPage(pdf, size.w, size.h);
+  
     const images = pageImages.filter(Boolean);
     const imageIndices = [];
     for (let i = 0; i < pageImages.length; i++) {
-        if (pageImages[i]) {
-            imageIndices.push(i);
-        }
+      if (pageImages[i]) {
+        imageIndices.push(i);
+      }
     }
-
+  
     for (let i = 0; i < images.length; i++) {
       pdf.addPage();
       const pageIndex = imageIndices[i];
@@ -450,40 +467,8 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
   
     const images = pageImages.filter(Boolean);
   
-    // Prepend Metadata Pages
-    const metadataPagesHTML = `
-      <section class="page metadata-page" style="text-align: center; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-        <h1 style="font-size: 3em; margin-bottom: 0.5em;">${metadata.title || "Untitled"}</h1>
-        ${metadata.subTitle ? `<h2 style="font-size: 1.5em; font-style: italic; color: #666; margin-bottom: 2em;">${metadata.subTitle}</h2>` : ''}
-        <p style="font-size: 1.25em;">by ${metadata.author || "Unknown Author"}</p>
-      </section>
-
-      <section class="page metadata-page" style="padding: 10%; display: flex; flex-direction: column; justify-content: center;">
-        <div style="max-width: 500px; margin: 0 auto; text-align: left;">
-          <h2 style="font-size: 1.25em; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 20px;">Copyright Information</h2>
-          <div style="line-height: 1.6; color: #333;">
-            <p>Copyright © ${new Date().getFullYear()} by ${metadata.author?.trim() || "N/A"}</p>
-            <p>All Rights Reserved.</p>
-            <br/>
-            <p><strong>ISBN:</strong> ${metadata.ISBN || "N/A"}</p>
-            <p><strong>Cover Design By:</strong> ${metadata.coverdesignby || "N/A"}</p>
-            <p><strong>Cover Illustration By:</strong> ${metadata.coverillustrationby || "N/A"}</p>
-            <p><strong>Edited By:</strong> ${metadata.editedby || "N/A"}</p>
-            <p><strong>Edition:</strong> ${metadata.edition || "N/A"}</p>
-            <p><strong>Published By:</strong> ${metadata.publisher || "N/A"}</p>
-          </div>
-          ${metadata.description ? `
-            <div style="margin-top: 40px; border-top: 1px solid #eee; pt-20px;">
-              <p style="font-size: 0.75em; font-weight: bold; color: #888; text-transform: uppercase;">About this book</p>
-              <p style="color: #444;">${metadata.description}</p>
-            </div>
-          ` : ''}
-        </div>
-      </section>
-    `;
-
-    // Build Artwork pages
-    const artworkPagesHTML = images
+    // Build HTML pages
+    const pagesHTML = images
       .map(
         (img, index) => `
         <section class="page">
@@ -492,8 +477,6 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
       `
       )
       .join("");
-    
-    const pagesHTML = metadataPagesHTML + artworkPagesHTML;
   
     const epubHTML = `<!DOCTYPE html>
   <html>
