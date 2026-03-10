@@ -109,8 +109,9 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
 
   const handleTextDoubleClick = (textId) => {
     setEditingTextId(textId);
-    // Text overlays are keyed by artwork page index (0,1,2...); preview pages 0,1 are title/copyright
-    const artworkIndex = currentPreviewPage >= 2 ? currentPreviewPage - 2 : -1;
+    // Text overlays are keyed by artwork page index; metadata pages come first
+    const artworkPageOffset = metadata?.description ? 3 : 2;
+    const artworkIndex = currentPreviewPage >= artworkPageOffset ? currentPreviewPage - artworkPageOffset : -1;
     const pageTexts = (artworkIndex >= 0 && textOverlays && textOverlays[artworkIndex]) ? textOverlays[artworkIndex] : [];
     const text = pageTexts.find((t) => t.id === textId);
     if (text) {
@@ -230,15 +231,28 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
               <span className="font-semibold">Published By:</span> {metadata.publisher || "N/A"}
             </div>
           </div>
-          {metadata.description && (
-            <div className="mt-8 text-sm border-t pt-4">
-              <div className="font-semibold mb-2 uppercase text-xs text-gray-500">About this book</div>
-              <div className="text-gray-600 leading-relaxed line-clamp-[10]">{metadata.description}</div>
-            </div>
-          )}
         </div>
       ),
     },
+    ...(metadata.description
+      ? [
+          {
+            type: "about",
+            content: (
+              <div className="h-full text-left w-full px-8 py-10 bg-white overflow-y-auto">
+                <div className="max-w-xl">
+                  <div className="font-semibold mb-3 uppercase text-xs text-gray-500">
+                    About this book
+                  </div>
+                  <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    {metadata.description}
+                  </div>
+                </div>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const artworkPages = pagesSource.map(({ img, index }) => {
@@ -249,7 +263,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
       content: (
         <div className="h-full flex flex-col gap-4">
           <div
-            ref={index + 2 === currentPreviewPage ? imageContainerRef : null}
+            ref={index + (metadata.description ? 3 : 2) === currentPreviewPage ? imageContainerRef : null}
             className={img ? `w-full border rounded-md overflow-hidden bg-gray-100 relative ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}` : `rounded-md overflow-hidden flex items-center justify-center text-sm
               ${readOnly ? "h-[420px]" : "h-auto bg-gray-200 cursor-pointer"}
             `}
@@ -286,7 +300,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                   alt="Page artwork"
                   className="w-full h-full object-cover"
                 />
-                {!readOnly && (index + 2) === currentPreviewPage && (
+                {!readOnly && (index + (metadata.description ? 3 : 2)) === currentPreviewPage && (
                   <>
                     <Button
                       onClick={(e) => {
@@ -314,7 +328,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                 {pageTexts.map((textOverlay) => (
                   <div key={textOverlay.id}>
                     {/* Edit Modal - positioned in center */}
-                    {editingTextId === textOverlay.id && (index + 2) === currentPreviewPage && (
+                    {editingTextId === textOverlay.id && (index + (metadata.description ? 3 : 2)) === currentPreviewPage && (
                       <div
                         className="absolute bg-white border-2 border-blue-500 rounded p-2 shadow-lg flex flex-col md:flex-row items-center gap-2 md:gap-2 z-30"
                         style={{
@@ -454,13 +468,13 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                     {/* Text Display */}
                     <div
                       onMouseDown={(e) => {
-                        if (!readOnly && (index + 2) === currentPreviewPage && !editingTextId) {
+                        if (!readOnly && (index + (metadata.description ? 3 : 2)) === currentPreviewPage && !editingTextId) {
                           e.stopPropagation();
                           handleTextMouseDown(e, textOverlay.id, index);
                         }
                       }}
                       onDoubleClick={(e) => {
-                        if (!readOnly && (index + 2) === currentPreviewPage) {
+                        if (!readOnly && (index + (metadata.description ? 3 : 2)) === currentPreviewPage) {
                           e.stopPropagation();
                           handleTextDoubleClick(textOverlay.id);
                         }
@@ -472,7 +486,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                         e.stopPropagation();
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      className={`absolute ${!readOnly && (index + 2) === currentPreviewPage ? "cursor-move hover:ring-2 hover:ring-blue-400" : ""}`}
+                      className={`absolute ${!readOnly && (index + (metadata.description ? 3 : 2)) === currentPreviewPage ? "cursor-move hover:ring-2 hover:ring-blue-400" : ""}`}
                       style={{
                         left: `${textOverlay.x}%`,
                         top: `${textOverlay.y}%`,
@@ -490,7 +504,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                       }}
                     >
                       {textOverlay.text}
-                      {!readOnly && (index + 2) === currentPreviewPage && editingTextId !== textOverlay.id && (
+                      {!readOnly && (index + (metadata.description ? 3 : 2)) === currentPreviewPage && editingTextId !== textOverlay.id && (
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -538,7 +552,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
       .filter(Boolean).length;
   };
 
-  const artworkIndex = currentPreviewPage - 2;
+  const artworkIndex = currentPreviewPage - (metadata.description ? 3 : 2);
   const currentPageText = artworkIndex >= 0 ? (manuscriptData?.data?.[artworkIndex]?.content || "") : "";
   const currentPageWords = getWordCount(currentPageText);
   
@@ -610,7 +624,14 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
         !readOnly && (
           <div className="grid grid-cols-6 gap-3 mb-6 mt-6">
             {pages.map((page, index) => {
-              if (index < 2) {
+              const metadataCount = metadata?.description ? 3 : 2;
+              if (index < metadataCount) {
+                const label =
+                  index === 0
+                    ? "Title"
+                    : index === 1
+                    ? "Copyright"
+                    : "About this book";
                 return (
                   <div
                     key={index}
@@ -622,13 +643,13 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                         : "border-gray-200 bg-gray-50 text-gray-400"}
                     `}
                   >
-                    <span>{index === 0 ? "Title" : "Copyright"}</span>
+                    <span>{label}</span>
                     <span className="text-[8px] mt-1">Page {index + 1}</span>
                   </div>
                 );
               }
 
-              const artworkPageIndex = index - 2;
+              const artworkPageIndex = index - (metadata?.description ? 3 : 2);
               const hasImage = pageImages[artworkPageIndex] !== null && pageImages[artworkPageIndex] !== undefined;
               return (
                 <div

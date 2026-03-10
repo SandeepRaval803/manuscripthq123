@@ -394,15 +394,22 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
       pdf.text(valueLines, margin + labelW, y);
       y += valueLines.length * 0.2 + 0.15;
     });
-    if (metadata?.description) {
-      y += 0.2;
-      pdf.setFont("helvetica", "bold");
-      pdf.text("About this book", margin, y);
-      y += 0.2;
-      pdf.setFont("helvetica", "normal");
-      const descLines = pdf.splitTextToSize(metadata.description, pageW - margin * 2);
-      pdf.text(descLines, margin, y);
-    }
+  };
+
+  const addAboutPage = (pdf, pageW, pageH) => {
+    if (!metadata?.description) return;
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, pageH, "F");
+    pdf.setTextColor(0, 0, 0);
+    const margin = 0.8;
+    let y = margin;
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("About this book", margin, y);
+    y += 0.3;
+    pdf.setFont("helvetica", "normal");
+    const descLines = pdf.splitTextToSize(metadata.description, pageW - margin * 2);
+    pdf.text(descLines, margin, y);
   };
 
   const exportImagesAsPDF = async () => {
@@ -436,6 +443,12 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     // Page 2: Copyright (same trim size)
     pdf.addPage();
     addCopyrightPage(pdf, size.w, size.h);
+
+    // Optional Page 3: About this book (only if description exists)
+    if (metadata?.description) {
+      pdf.addPage();
+      addAboutPage(pdf, size.w, size.h);
+    }
   
     const images = pageImages.filter(Boolean);
     const imageIndices = [];
