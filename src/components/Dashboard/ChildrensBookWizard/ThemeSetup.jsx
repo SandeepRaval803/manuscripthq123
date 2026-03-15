@@ -15,6 +15,7 @@ import { BINDING_PREVIEW_TYPE, TRIM_ASPECT_RATIO } from "./WizardConstants";
 
 export function ThemeStep({
   metadata,
+  dedication,
   manuscriptData,
   getPreviewStyles,
   pageImages,
@@ -69,6 +70,7 @@ export function ThemeStep({
           <CardContent className="p-4">
             <ChildBookPreview
               metadata={metadata}
+              dedication={dedication}
               manuscriptData={manuscriptData}
               getPreviewStyles={getPreviewStyles}
               pageImages={pageImages}

@@ -26,11 +26,13 @@ const AGE_GUIDELINES = {
     totalWords: [500, 1500],
   },
 };
-export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, pageImages, setPageImages, textOverlays, setTextOverlays, readOnly=false, ageGroup, trimSize, binding }) {
+export function ChildBookPreview({ metadata, dedication = "", manuscriptData, getPreviewStyles, pageImages, setPageImages, textOverlays, setTextOverlays, readOnly=false, ageGroup, trimSize, binding }) {
   const [currentPreviewPage, setCurrentPreviewPage] = useState(0);
   const [editingTextId, setEditingTextId] = useState(null);
   const [newTextValue, setNewTextValue] = useState("");
   const imageContainerRef = useRef(null);
+  const hasDedication = Boolean(dedication?.trim());
+  const artworkPageOffset = 2 + (metadata?.description ? 1 : 0) + (hasDedication ? 1 : 0);
 
   const handleImageUpload = (file, pageIndex) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -109,8 +111,6 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
 
   const handleTextDoubleClick = (textId) => {
     setEditingTextId(textId);
-    // Text overlays are keyed by artwork page index; metadata pages come first
-    const artworkPageOffset = metadata?.description ? 3 : 2;
     const artworkIndex = currentPreviewPage >= artworkPageOffset ? currentPreviewPage - artworkPageOffset : -1;
     const pageTexts = (artworkIndex >= 0 && textOverlays && textOverlays[artworkIndex]) ? textOverlays[artworkIndex] : [];
     const text = pageTexts.find((t) => t.id === textId);
@@ -206,30 +206,42 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
         <div className="flex flex-col justify-center h-full text-left w-full px-8 py-10 bg-white overflow-y-auto">
           <div className="space-y-3 w-full max-w-md text-gray-700 text-sm">
             <div className="font-medium text-lg mb-4">Copyright Information</div>
-            <div>
-              Copyright © {new Date().getFullYear()} by{" "}
-              {metadata.author?.trim() || "N/A"}
-            </div>
+            {(metadata.author?.trim()) && (
+              <div>
+                Copyright © {new Date().getFullYear()} by {metadata.author.trim()}
+              </div>
+            )}
             <div>All Rights Reserved.</div>
-            <div className="pt-2">
-              <span className="font-semibold">ISBN:</span> {metadata.ISBN || "N/A"}
-            </div>
-            <div>
-              <span className="font-semibold">Cover Design By:</span> {metadata.coverdesignby || "N/A"}
-            </div>
-            <div>
-              <span className="font-semibold">Cover Illustration By:</span>{" "}
-              {metadata.coverillustrationby || "N/A"}
-            </div>
-            <div>
-              <span className="font-semibold">Edited By:</span> {metadata.editedby || "N/A"}
-            </div>
-            <div>
-              <span className="font-semibold">Edition:</span> {metadata.edition || "N/A"}
-            </div>
-            <div>
-              <span className="font-semibold">Published By:</span> {metadata.publisher || "N/A"}
-            </div>
+            {metadata.ISBN?.trim() && (
+              <div className="pt-2">
+                <span className="font-semibold">ISBN:</span> {metadata.ISBN.trim()}
+              </div>
+            )}
+            {metadata.coverdesignby?.trim() && (
+              <div>
+                <span className="font-semibold">Cover Design By:</span> {metadata.coverdesignby.trim()}
+              </div>
+            )}
+            {metadata.coverillustrationby?.trim() && (
+              <div>
+                <span className="font-semibold">Cover Illustration By:</span> {metadata.coverillustrationby.trim()}
+              </div>
+            )}
+            {metadata.editedby?.trim() && (
+              <div>
+                <span className="font-semibold">Edited By:</span> {metadata.editedby.trim()}
+              </div>
+            )}
+            {metadata.edition?.trim() && (
+              <div>
+                <span className="font-semibold">Edition:</span> {metadata.edition.trim()}
+              </div>
+            )}
+            {metadata.publisher?.trim() && (
+              <div>
+                <span className="font-semibold">Published By:</span> {metadata.publisher.trim()}
+              </div>
+            )}
           </div>
         </div>
       ),
@@ -253,6 +265,25 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
           },
         ]
       : []),
+    ...(hasDedication
+      ? [
+          {
+            type: "dedication",
+            content: (
+              <div className="h-full text-left w-full px-8 py-10 bg-white overflow-y-auto">
+                <div className="max-w-xl">
+                  <div className="font-semibold mb-3 uppercase text-xs text-gray-500">
+                    Dedication
+                  </div>
+                  <div className="text-gray-700 leading-relaxed whitespace-pre-line">
+                    {dedication.trim()}
+                  </div>
+                </div>
+              </div>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const artworkPages = pagesSource.map(({ img, index }) => {
@@ -263,7 +294,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
       content: (
         <div className="h-full flex flex-col gap-4">
           <div
-            ref={index + (metadata.description ? 3 : 2) === currentPreviewPage ? imageContainerRef : null}
+            ref={index + artworkPageOffset === currentPreviewPage ? imageContainerRef : null}
             className={img ? `w-full border rounded-md overflow-hidden bg-gray-100 relative ${bindingType === "hardcover" ? "shadow-lg" : "shadow-sm"}` : `rounded-md overflow-hidden flex items-center justify-center text-sm
               ${readOnly ? "h-[420px]" : "h-auto bg-gray-200 cursor-pointer"}
             `}
@@ -300,7 +331,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                   alt="Page artwork"
                   className="w-full h-full object-cover"
                 />
-                {!readOnly && (index + (metadata.description ? 3 : 2)) === currentPreviewPage && (
+                {!readOnly && (index + artworkPageOffset) === currentPreviewPage && (
                   <>
                     <Button
                       onClick={(e) => {
@@ -328,7 +359,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                 {pageTexts.map((textOverlay) => (
                   <div key={textOverlay.id}>
                     {/* Edit Modal - positioned in center */}
-                    {editingTextId === textOverlay.id && (index + (metadata.description ? 3 : 2)) === currentPreviewPage && (
+                    {editingTextId === textOverlay.id && (index + artworkPageOffset) === currentPreviewPage && (
                       <div
                         className="absolute bg-white border-2 border-blue-500 rounded p-2 shadow-lg flex flex-col md:flex-row items-center gap-2 md:gap-2 z-30"
                         style={{
@@ -624,14 +655,15 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
         !readOnly && (
           <div className="grid grid-cols-6 gap-3 mb-6 mt-6">
             {pages.map((page, index) => {
-              const metadataCount = metadata?.description ? 3 : 2;
+              const metadataCount = artworkPageOffset;
               if (index < metadataCount) {
-                const label =
-                  index === 0
-                    ? "Title"
-                    : index === 1
-                    ? "Copyright"
-                    : "About this book";
+                const labels = [
+                  "Title",
+                  "Copyright",
+                  ...(metadata?.description ? ["About this book"] : []),
+                  ...(hasDedication ? ["Dedication"] : []),
+                ];
+                const label = labels[index] || `Page ${index + 1}`;
                 return (
                   <div
                     key={index}
@@ -649,7 +681,7 @@ export function ChildBookPreview({ metadata, manuscriptData, getPreviewStyles, p
                 );
               }
 
-              const artworkPageIndex = index - (metadata?.description ? 3 : 2);
+              const artworkPageIndex = index - artworkPageOffset;
               const hasImage = pageImages[artworkPageIndex] !== null && pageImages[artworkPageIndex] !== undefined;
               return (
                 <div

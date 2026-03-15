@@ -1,10 +1,15 @@
-import { Palette, FileText, Info, Settings, Baby, Book, BookOpen, GraduationCap, PenLine } from "lucide-react"
+import { Palette, FileText, Info, Settings, Baby, Book, BookOpen, GraduationCap, PenLine, HeartHandshake } from "lucide-react"
 
 export const steps = [
   {
     id: "metadata",
     name: "Metadata",
     icon: FileText,
+  },
+  {
+    id: "dedication",
+    name: "Dedication",
+    icon: HeartHandshake,
   },
   {
     id: "theme",

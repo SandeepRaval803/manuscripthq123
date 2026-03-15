@@ -12,6 +12,7 @@ import { ThemeStep } from "./ThemeSetup";
 import { PreviewStep } from "./PreviewStep";
 import { ExportStep } from "./ExportStep";
 import { MetadataStep } from "./MetadataStep";
+import { DedicationStep } from "./DedicationStep";
 import { fetchManuscriptData, updateManuscriptData } from "@/apiCall/auth";
 
 const TOTAL_PAGES = 32;
@@ -48,6 +49,8 @@ export function ChildrensBookWizard() {
     genre: "",
   });
 
+  const [dedication, setDedication] = useState("");
+
   const [ageGroup, setAgeGroup] = useState("0");
   const [trimSize, setTrimSize] = useState("8x8");
   const [binding, setBinding] = useState("hardcover-kdp");
@@ -82,8 +85,14 @@ export function ChildrensBookWizard() {
     fetchManuscriptDataHandler();
   }, [user?.selectedManuscript, token]);
 
+  const isMetadataValid = Boolean(metadata?.title?.trim() && metadata?.author?.trim());
+
   const handleContinue = async () => {
     if (currentStep === "metadata") {
+      if (!isMetadataValid) {
+        toast.error("Title and Author are required");
+        return;
+      }
       const updateSuccess = await updateManuscriptData(user, token, metadata);
       if (updateSuccess) {
         setCurrentStep(nextStep);
@@ -226,9 +235,14 @@ export function ChildrensBookWizard() {
           <MetadataStep metadata={metadata} setMetadata={setMetadata} />
         )}
 
+        {currentStep === "dedication" && (
+          <DedicationStep dedication={dedication} setDedication={setDedication} />
+        )}
+
         {currentStep === "theme" && (
           <ThemeStep
             metadata={metadata}
+            dedication={dedication}
             manuscriptData={manuscriptData}
             getPreviewStyles={getPreviewStyles}
             pageImages={pageImages}
@@ -247,6 +261,7 @@ export function ChildrensBookWizard() {
         {currentStep === "preview" && (
           <PreviewStep
             metadata={metadata}
+            dedication={dedication}
             manuscriptData={manuscriptData}
             getPreviewStyles={getPreviewStyles}
             pageImages={pageImages}
@@ -263,6 +278,7 @@ export function ChildrensBookWizard() {
             setExportFormat={setExportFormat}
             manuscriptData={manuscriptData}
             metadata={metadata}
+            dedication={dedication}
             getPreviewStyles={getPreviewStyles}
             ageGroup={ageGroup}
             trimSize={trimSize}
@@ -284,7 +300,7 @@ export function ChildrensBookWizard() {
         </Button>
         <Button
           onClick={handleContinue}
-          disabled={!nextStep}
+          disabled={!nextStep || (currentStep === "metadata" && !isMetadataValid)}
           className="bg-primary"
         >
           {nextStep === "export" ? "Review & Export" : "Continue"}

@@ -16,7 +16,7 @@ export function MetadataStep({ metadata, setMetadata }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="title">Title</Label>
+          <Label htmlFor="title">Title <span className="text-destructive">*</span></Label>
           <Input
             id="title"
             value={metadata.title}
@@ -38,13 +38,14 @@ export function MetadataStep({ metadata, setMetadata }) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="author">Author</Label>
+          <Label htmlFor="author">Author <span className="text-destructive">*</span></Label>
           <Input
             id="author"
             value={metadata.author}
             onChange={(e) =>
               setMetadata({ ...metadata, author: e.target.value })
             }
+            placeholder="Required"
           />
         </div>
 

@@ -14,7 +14,7 @@ const TRIM_PDF_SIZE = {
   "8x10": { w: 8, h: 10 },
   "10x8": { w: 10, h: 8 },
 };
-export function ExportStep({ exportFormat, setExportFormat, manuscriptData, metadata, getPreviewStyles, trimSize, pageImages, textOverlays }) {
+export function ExportStep({ exportFormat, setExportFormat, manuscriptData, metadata, dedication = "", getPreviewStyles, trimSize, pageImages, textOverlays }) {
   const [exporting, setExporting] = useState(false)
 
   const generateTableOfContents = () => {
@@ -412,6 +412,22 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     pdf.text(descLines, margin, y);
   };
 
+  const addDedicationPage = (pdf, pageW, pageH) => {
+    if (!dedication?.trim()) return;
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, pageW, pageH, "F");
+    pdf.setTextColor(0, 0, 0);
+    const margin = 0.8;
+    let y = margin;
+    pdf.setFontSize(12);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Dedication", margin, y);
+    y += 0.3;
+    pdf.setFont("helvetica", "normal");
+    const descLines = pdf.splitTextToSize(dedication.trim(), pageW - margin * 2);
+    pdf.text(descLines, margin, y);
+  };
+
   const exportImagesAsPDF = async () => {
     if (!pageImages || pageImages.filter(Boolean).length === 0) {
       toast.error("No images to export");
@@ -448,6 +464,12 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     if (metadata?.description) {
       pdf.addPage();
       addAboutPage(pdf, size.w, size.h);
+    }
+
+    // Optional: Dedication page (only if dedication exists)
+    if (dedication?.trim()) {
+      pdf.addPage();
+      addDedicationPage(pdf, size.w, size.h);
     }
   
     const images = pageImages.filter(Boolean);
