@@ -14,6 +14,9 @@ const TRIM_PDF_SIZE = {
   "8x10": { w: 8, h: 10 },
   "10x8": { w: 10, h: 8 },
 };
+
+const hasValue = (val) => val && typeof val === 'string' && val.trim() !== "";
+
 export function ExportStep({ exportFormat, setExportFormat, manuscriptData, metadata, dedication = "", getPreviewStyles, trimSize, pageImages, textOverlays }) {
   const [exporting, setExporting] = useState(false)
 
@@ -170,17 +173,17 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
   
   <div style="text-align: left; padding: 40px 20px; word-wrap: break-word; overflow-wrap: break-word;">
     <div>
-      <p style="word-wrap: break-word; overflow-wrap: break-word;">Copyright © ${new Date().getFullYear()} by ${metadata.author || "N/A"}</p>
+      ${metadata.author?.trim() ? `<p style="word-wrap: break-word; overflow-wrap: break-word;">Copyright © ${new Date().getFullYear()} by ${metadata.author.trim()}</p>` : ''}
       <p>All Rights Reserved.</p>
     </div>
     
     <div style="margin-top: 8px;">
-      <p style="word-wrap: break-word; overflow-wrap: break-word;">ISBN: ${metadata.ISBN || "N/A"}</p>
-      <p style="word-wrap: break-word; overflow-wrap: break-word;">Cover Design By ${metadata.coverdesignby || "N/A"}</p>
-      <p style="word-wrap: break-word; overflow-wrap: break-word;">Cover Illustration By ${metadata.coverillustrationby || "N/A"}</p>
-      <p style="word-wrap: break-word; overflow-wrap: break-word;">Edited By ${metadata.editedby || "N/A"}</p>
-      <p style="word-wrap: break-word; overflow-wrap: break-word;">${metadata.edition || "N/A"} Edition</p>
-      <p style="word-wrap: break-word; overflow-wrap: break-word;">Published By: ${metadata.publisher || "N/A"}</p>
+      ${metadata.ISBN?.trim() ? `<p style="word-wrap: break-word; overflow-wrap: break-word;">ISBN: ${metadata.ISBN.trim()}</p>` : ''}
+      ${metadata.coverdesignby?.trim() ? `<p style="word-wrap: break-word; overflow-wrap: break-word;">Cover Design By ${metadata.coverdesignby.trim()}</p>` : ''}
+      ${metadata.coverillustrationby?.trim() ? `<p style="word-wrap: break-word; overflow-wrap: break-word;">Cover Illustration By ${metadata.coverillustrationby.trim()}</p>` : ''}
+      ${metadata.editedby?.trim() ? `<p style="word-wrap: break-word; overflow-wrap: break-word;">Edited By ${metadata.editedby.trim()}</p>` : ''}
+      ${metadata.edition?.trim() ? `<p style="word-wrap: break-word; overflow-wrap: break-word;">${metadata.edition.trim()} Edition</p>` : ''}
+      ${metadata.publisher?.trim() ? `<p style="word-wrap: break-word; overflow-wrap: break-word;">Published By: ${metadata.publisher.trim()}</p>` : ''}
     </div>
     ${metadata.description ? `<div style="margin-top: 1.75rem; word-wrap: break-word; overflow-wrap: break-word;">${metadata.description}</div>` : ''}
   </div>
@@ -373,18 +376,20 @@ export function ExportStep({ exportFormat, setExportFormat, manuscriptData, meta
     pdf.text("Copyright Information", margin, y);
     y += 0.25;
     pdf.setFont("helvetica", "normal");
-    pdf.text(`Copyright © ${new Date().getFullYear()} by ${metadata?.author?.trim() || "N/A"}`, margin, y);
-    y += 0.2;
+    if (metadata?.author?.trim()) {
+      pdf.text(`Copyright © ${new Date().getFullYear()} by ${metadata.author.trim()}`, margin, y);
+      y += 0.2;
+    }
     pdf.text("All Rights Reserved.", margin, y);
     y += 0.35;
     const items = [
-      ["ISBN:", metadata?.ISBN || "N/A"],
-      ["Cover Design By:", metadata?.coverdesignby || "N/A"],
-      ["Cover Illustration By:", metadata?.coverillustrationby || "N/A"],
-      ["Edited By:", metadata?.editedby || "N/A"],
-      ["Edition:", metadata?.edition || "N/A"],
-      ["Published By:", metadata?.publisher || "N/A"],
-    ];
+      ["ISBN:", metadata?.ISBN],
+      ["Cover Design By:", metadata?.coverdesignby],
+      ["Cover Illustration By:", metadata?.coverillustrationby],
+      ["Edited By:", metadata?.editedby],
+      ["Edition:", metadata?.edition],
+      ["Published By:", metadata?.publisher],
+    ].filter(([_, value]) => hasValue(value));
     items.forEach(([label, value]) => {
       pdf.setFont("helvetica", "bold");
       pdf.text(label + " ", margin, y);
